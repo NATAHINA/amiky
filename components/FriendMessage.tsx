@@ -133,11 +133,24 @@ export default function FriendMessage() {
         .eq("id", user.id)
         .single();
 
-      if (!profile) {
-        console.error("Profil introuvable pour cet utilisateur.");
-        setLoadingFriends(false);
-        return;
-      }
+        if (!profile) {
+          console.warn("Profil introuvable pour cet utilisateur, création automatique...");
+
+          setFriends([]); 
+          setLoadingFriends(false);
+
+          setMe(null);
+
+          return;
+        } else {
+          setMe({
+            id: profile.id,
+            username: profile.username,
+            full_name: profile.full_name,
+            avatar: profile.avatar_url ?? null,
+          });
+        }
+
 
       if (!mounted) return;
 
@@ -212,7 +225,7 @@ export default function FriendMessage() {
     };
   }, []);
 
-  // ---------- 2) Mettre à jour last_seen (présence simple) ----------
+  
   const updateLastSeen = useCallback(async () => {
     if (!me) return;
     try {
@@ -238,7 +251,7 @@ export default function FriendMessage() {
     };
   }, [me, updateLastSeen]);
 
-  // ---------- select conv ----------
+  
   const handleSelectConv = async (conv: ConversationItem) => {
     if (!me) return;
     if (isMobile) setDrawerOpened(false);
@@ -269,7 +282,7 @@ export default function FriendMessage() {
     setSelectedConv(conv);
   };
 
-  // ---------- cleanup helper for realtime channel ----------
+
   const cleanupChannel = async () => {
     if (messagesChannelRef.current) {
       try {
@@ -281,7 +294,7 @@ export default function FriendMessage() {
     }
   };
 
-  // ---------- 4) Charger messages + realtime ----------
+
   useEffect(() => {
     if (!selectedConv || !me) {
       setMessages([]);
@@ -343,7 +356,7 @@ export default function FriendMessage() {
     if (!content.trim() || !me || !selectedConv) return;
     const body = content.trim();
     setContent("");
-    setShowEmojiPicker(false);
+    setShowEmojiPicker(true);
 
     const { error } = await supabase.from("messages").insert({
       conversation_id: selectedConv.id,
@@ -365,7 +378,7 @@ export default function FriendMessage() {
   const onEmojiClick = (emojiObject: any) => {
     const emoji = emojiObject?.emoji ?? "";
     setContent((prev) => prev + emoji);
-    setShowEmojiPicker(false);
+    setShowEmojiPicker(true);
   };
 
   // ---------- UI helper components ----------
@@ -600,7 +613,28 @@ export default function FriendMessage() {
 
                   {showEmojiPicker && (
                     <Box>
-                      <Picker onEmojiClick={(_, data) => onEmojiClick(data ?? _) as any} />
+                      <div
+                        style={{
+                          width: "100%",
+                          border: "1px solid #ddd",
+                          borderRadius: 8,
+                          padding: 8,
+                          position: "relative",
+                          backgroundColor: "#fff",
+                        }}
+                      >
+                        {/* Bouton Fermer */}
+                        <Button
+                          variant="subtle"
+                          size="xs"
+                          style={{ position: "absolute", top: 5, right: 5 }}
+                          onClick={() => setShowEmojiPicker(false)}
+                        >
+                          ✕ Fermer
+                        </Button>
+
+                        <Picker onEmojiClick={(emoji) => onEmojiClick(emoji)} />
+                      </div>
                     </Box>
                   )}
                 </Stack>

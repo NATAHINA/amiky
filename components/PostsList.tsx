@@ -20,24 +20,31 @@ import {
   Textarea,
   Flex,
   Drawer,
-  Divider
+  Divider,
+  Image,
+  SimpleGrid
 } from "@mantine/core";
-import { ChevronRight, Heart, MessageCircle, Plus, Eye, Users } from "lucide-react";
+import { ChevronRight, Heart, MessageCircle, Plus, Eye, Users, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import FriendList from "@components/FriendList";
 import SuggestionsList from "@components/SuggestionsList";
+import PostMediaGrid from "@components/PostMediaGrid";
+import Picker from "emoji-picker-react";
+
+type Profile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  username: string | null;
+};
 
 interface Post {
   id: string;
   content: string;
+  author_id: string;
   created_at: string;
-  profiles: {
-    id: string;
-    full_name: string;
-    avatar_url: string | null;
-    email: string | null;
-    username: string | null;
-  } | null;
+  profiles: Profile[];
   likes_count: number;
   comments_count: number;
   views: number;
@@ -51,20 +58,40 @@ export default function PostsList() {
   const [search, setSearch] = useState("");
   const [modalOpened, setModalOpened] = useState(false);
   const [newPostContent, setNewPostContent] = useState("");
-  const [newPostMedia, setNewPostMedia] = useState<File | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [newPostMedia, setNewPostMedia] = useState<File[]>([]);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [friends, setFriends] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
-
   const [sidebarOpened, setSidebarOpened] = useState(false);
 
   const router = useRouter();
 
-  const truncate = (text: string, limit = 120) =>
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUser(user);
+      fetchPosts();
+      loadFriendsAndSuggestions(user.id);
+    };
+    init();
+  }, []);
+
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    setNewPostMedia(Array.from(e.target.files));
+  };
+
+  const removeMedia = (index: number) => {
+    setNewPostMedia((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const truncate = (text: string, limit = 200) =>
     text.length > limit ? text.substring(0, limit) + "..." : text;
 
-  // ⚡ Fetch posts
+  // Fetch posts
   const fetchPosts = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -77,6 +104,7 @@ export default function PostsList() {
         content,
         created_at,
         media_urls,
+        author_id,
         profiles:author_id (
           id,
           full_name,
@@ -107,7 +135,8 @@ export default function PostsList() {
       views: p.views?.[0]?.count || 0,
       media_urls: p.media_urls || null,
       isLiked: user ? p.likes.some((like) => like.user_id === user.id) : false,
-      profiles: p.profiles?.[0] || null, // <-- transforme array en objet unique
+      profiles: p.profiles || [], 
+      author_id: p.author_id,
     }));
 
 
@@ -115,36 +144,40 @@ export default function PostsList() {
     setLoading(false);
   };
 
-  // ⚡ Load friends and suggestions
   const loadFriendsAndSuggestions = async (userId: string) => {
-    const [friendsRes, allProfilesRes] = await Promise.all([
-      supabase.from("followers").select("following_id").eq("follower_id", userId).limit(10),
-      supabase.from("profiles").select("*").neq("id", userId).limit(100)
-    ]);
+    try {
+      const friendsRes = await supabase
+        .from("followers")
+        .select("following_id")
+        .eq("follower_id", userId);
 
-    if (friendsRes.error) console.error(friendsRes.error);
-    if (allProfilesRes.error) console.error(allProfilesRes.error);
+      const allProfilesRes = await supabase
+        .from("profiles")
+        .select("*")
+        .neq("id", userId);
 
-    const followedIds = friendsRes.data?.map(f => f.following_id) || [];
-    const friendsProfiles = await supabase.from("profiles").select("*").in("id", followedIds);
-    setFriends(friendsProfiles.data || []);
+      const followedIds = friendsRes.data?.map(f => f.following_id) || [];
 
-    const suggestionsFiltered = allProfilesRes.data?.filter(p => !followedIds.includes(p.id)) || [];
-    setSuggestions(suggestionsFiltered);
+      const friendsProfiles = await supabase
+        .from("profiles")
+        .select("*")
+        .in("id", followedIds);
+
+      setFriends(friendsProfiles.data ?? []);
+
+      // Filtrer les suggestions
+      const suggestionsFiltered =
+        allProfilesRes.data?.filter(p => !followedIds.includes(p.id)) ?? [];
+
+      setSuggestions(suggestionsFiltered);
+    } catch (err) {
+      console.error("Erreur loadFriendsAndSuggestions :", err);
+    }
   };
 
-  useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setCurrentUser(user);
-      fetchPosts();
-      loadFriendsAndSuggestions(user.id);
-    };
-    init();
-  }, []);
 
-  // ✅ Like / Unlike
+
+  // Like / Unlike
   const handleLike = async (postId: string) => {
     if (!currentUser) return alert("Vous devez être connecté");
 
@@ -169,38 +202,68 @@ export default function PostsList() {
         prev.map(p => p.id === postId ? { ...p, likes_count: p.likes_count + 1, isLiked: true } : p)
       );
     }
+
+    const postAuthor = post.author_id;
+
+    if (postAuthor && postAuthor !== currentUser.id) {
+
+      const { data, error } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: postAuthor,
+        from_user: currentUser.id,
+        type: "like",
+        post_id: postId
+      })
+      .select();
+
+    }
+
   };
 
-  // ✅ Open post details (view + redirect)
+  // Open post details (view + redirect)
   const openDetails = async (postId: string) => {
     if (!currentUser) return;
     await supabase.from("post_views").insert({ post_id: postId, user_id: currentUser.id });
     router.push(`/posts/${postId}`);
   };
 
-  // ✅ Create post
+
+  // Create post
   const handleCreatePost = async () => {
     if (!currentUser) return alert("Vous devez être connecté");
 
-    let media_urls: string[] | null = null;
+    let media_urls: string[] = [];
 
-    if (newPostMedia) {
-      const fileExt = newPostMedia.name.split(".").pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const { data, error: uploadError } = await supabase.storage
+    // Upload multiple files if any
+    if (newPostMedia.length > 0) {
+      for (const file of newPostMedia) {
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+        const { data, error: uploadError } = await supabase.storage
+          .from("post_media")
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error(uploadError);
+          return alert("Erreur upload media");
+        }
+
+        const { data: publicUrl } = supabase
+        .storage
         .from("post_media")
-        .upload(fileName, newPostMedia);
+        .getPublicUrl(data.path);
 
-      if (uploadError) return alert("Erreur upload media");
+      media_urls.push(publicUrl.publicUrl);
 
-      media_urls = data?.path
-        ? [`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post_media/${data.path}`]
-        : null;
+        // media_urls.push(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post_media/${data.path}`);
+      }
     }
 
+    // Insert post into database
     const { error } = await supabase.from("posts").insert({
       content: newPostContent,
-      media_urls,
+      media_urls: media_urls.length > 0 ? media_urls : null,
       author_id: currentUser.id
     });
 
@@ -209,53 +272,77 @@ export default function PostsList() {
       return alert("Erreur création post");
     }
 
+    // Reset modal
     setModalOpened(false);
     setNewPostContent("");
-    setNewPostMedia(null);
+    setNewPostMedia([]);
     fetchPosts();
   };
 
-  // ✅ Follow
+
   const handleFollow = async (targetId: string) => {
     if (!currentUser) return;
+
     const { error } = await supabase.from("followers").insert({
       follower_id: currentUser.id,
       following_id: targetId
     });
-    if (error) return console.error(error);
 
-    const followedProfile = suggestions.find(p => p.id === targetId);
-    if (!followedProfile) return;
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-    setFriends(prev => [followedProfile, ...prev]);
-    setSuggestions(prev => prev.filter(p => p.id !== targetId));
+    // Recharger immédiatement les listes
+    await loadFriendsAndSuggestions(currentUser.id);
+
+    await supabase.from("notifications").insert({
+      user_id: targetId,
+      from_user_id: currentUser.id,
+      type: "follow"
+    });
+
   };
 
-  // ✅ Unfollow
   const handleUnfollow = async (targetId: string) => {
     if (!currentUser) return;
-    const { error } = await supabase.from("followers").delete()
+
+    const { error } = await supabase
+      .from("followers")
+      .delete()
       .eq("follower_id", currentUser.id)
       .eq("following_id", targetId);
-    if (error) return console.error(error);
 
-    const unfollowedProfile = friends.find(p => p.id === targetId);
-    if (!unfollowedProfile) return;
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-    setFriends(prev => prev.filter(f => f.id !== targetId));
-    setSuggestions(prev => [unfollowedProfile, ...suggestions]);
+    // Recharger immédiatement les listes
+    await loadFriendsAndSuggestions(currentUser.id);
   };
 
-  // ✅ Filter posts
+
   const filteredPosts = posts.filter(
     p =>
       p.content.toLowerCase().includes(search.toLowerCase()) ||
-      p.profiles?.full_name?.toLowerCase().includes(search.toLowerCase())
+      p.profiles.some(profile =>
+        profile.full_name?.toLowerCase().includes(search.toLowerCase())
+      ) ||
+      p.profiles.some(profile =>
+        profile.username?.toLowerCase().includes(search.toLowerCase())
+      )
   );
+
 
   if (loading) return (
     <Center h="100vh"><Loader variant="dots" /></Center>
   );
+
+  const onEmojiClick = (emojiObject: any) => {
+    setNewPostContent((prev) => prev + emojiObject.emoji);
+    setShowEmojiPicker(true);
+  };
 
   return (
     <Stack gap="md">
@@ -263,12 +350,12 @@ export default function PostsList() {
       <Flex justify="space-between" align="center">
         <Text size="md" fw={600}>Posts</Text>
         
-        <Group justify="flex-end" my="md" hiddenFrom="xs">
+        <Group justify="flex-end" my="md">
           <Button leftSection={<Plus size={14} />} onClick={() => setModalOpened(true)} size="sm" radius="xl">
             Créer
           </Button>
 
-          <ActionIcon size="lg" variant="light" onClick={() => setSidebarOpened(true)}>
+          <ActionIcon size="lg" variant="light" hiddenFrom="xs" onClick={() => setSidebarOpened(true)}>
             <Users size={20} />
           </ActionIcon>
         </Group>
@@ -312,28 +399,17 @@ export default function PostsList() {
                 <Card shadow="sm" padding="sm" withBorder style={{ minHeight: "170px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                   <Group justify="space-between" mb="xs">
                     <Group gap="xs">
-                      <Avatar radius="xl" size="sm" src={p.profiles?.avatar_url || ""} />
-                      <Text fw={600}>{p.profiles?.full_name || p.profiles?.username}</Text>
+                      {/*<Avatar radius="xl" size="sm" src={p.profiles?.avatar_url || ""} />
+                      <Text fw={600}>{p.profiles?.full_name || p.profiles?.username}</Text>*/}
+
+                      <Avatar radius="xl" size="sm" src={p.profiles[0]?.avatar_url || ""} />
+                      <Text fw={600}>{p.profiles[0]?.full_name || p.profiles[0]?.username}</Text>
+
                     </Group>
-                    {/*<Group gap={5}><Eye size={16} /><Text fz={12}>{p.views}</Text></Group>*/}
                   </Group>
 
-                  {Array.isArray(p.media_urls) &&
-                    p.media_urls.map((media: string, i: number) => (
-                      media.endsWith(".mp4") ? (
-                        <video key={i} controls style={{ width: "100%", borderRadius: 8, marginTop: 16 }}>
-                          <source src={media} type="video/mp4" />
-                        </video>
-                      ) : (
-                        <img
-                          key={i}
-                          src={media}
-                          alt={`media-${i}`}
-                          style={{ width: "100%", borderRadius: 8, marginTop: 16 }}
-                        />
-                      )
-                    ))
-                  }
+                  
+                  {p.media_urls && <PostMediaGrid media_urls={p.media_urls} />}
 
                   <Text mb={15}>{truncate(p.content, 120)}</Text>
 
@@ -378,15 +454,78 @@ export default function PostsList() {
       </Grid>
 
       {/* Modal création post */}
-      <Modal opened={modalOpened} onClose={() => setModalOpened(false)} title="Créer un post" size="lg">
+      <Modal 
+        opened={modalOpened} 
+        onClose={() => setModalOpened(false)} 
+        title="Créer un post" 
+        size="lg" 
+        centered>
         <Stack>
-          <Textarea
-            placeholder="Votre contenu..."
-            value={newPostContent}
-            onChange={(e) => setNewPostContent(e.currentTarget.value)}
-            minRows={4}
-          />
-          <input type="file" onChange={(e) => setNewPostMedia(e.target.files?.[0] || null)} />
+            <Textarea
+                placeholder="Votre contenu..."
+                value={newPostContent}
+                onChange={(e) => setNewPostContent(e.currentTarget.value)}
+                minRows={6}
+              />
+            <ActionIcon onClick={() => setShowEmojiPicker((v) => !v)} size="md">
+              😊
+            </ActionIcon>
+
+          {showEmojiPicker && (
+            <div
+              style={{
+                width: "100%",
+                border: "1px solid #ddd",
+                borderRadius: 8,
+                padding: 8,
+                position: "relative",
+                backgroundColor: "#fff",
+              }}
+            >
+              {/* Bouton Fermer */}
+              <Button
+                variant="subtle"
+                size="xs"
+                style={{ position: "absolute", top: 5, right: 5 }}
+                onClick={() => setShowEmojiPicker(false)}
+              >
+                ✕ Fermer
+              </Button>
+
+              <Picker onEmojiClick={(emoji) => onEmojiClick(emoji)} />
+            </div>
+          )}
+          
+          
+          <input type="file" multiple onChange={handleMediaChange} />
+
+          {newPostMedia.length > 0 && (
+          <Group gap="sm" mt="sm">
+            {newPostMedia.map((file, index) => {
+              const url = URL.createObjectURL(file);
+              return (
+                <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
+                  <Image
+                    src={url}
+                    alt="aperçu"
+                    width={100}
+                    height={100}
+                    fit="cover"
+                  />
+                  <ActionIcon
+                    color="red"
+                    size="sm"
+                    style={{ position: 'absolute', top: 0, right: 0 }}
+                    onClick={() => removeMedia(index)}
+                  >
+                    <X size={16} />
+                  </ActionIcon>
+                </div>
+              );
+            })}
+          </Group>
+        )}
+
           <Button onClick={handleCreatePost}>Publier</Button>
         </Stack>
       </Modal>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   Text,
@@ -39,6 +39,22 @@ interface Props {
 export default function CommentsList({postId, comments, setComments, onCommentAdded, }: Props) {
   const [content, setContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const commentId = hash.replace("#comment-", "");
+      const el = document.getElementById(`comment-${commentId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.classList.add("highlight");
+        setTimeout(() => el.classList.remove("highlight"), 2000);
+      }
+    }
+  }, []);
+
+
 
   const sendComment = async () => {
     if (!content.trim()) return;
@@ -81,18 +97,40 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
     }
 
     setContent("");
+
+    const { data: postData, error: postError } = await supabase
+      .from("posts")
+      .select("author_id")
+      .eq("id", postId)
+      .single();
+
+    if (!postError && postData) {
+      const postAuthorId = postData.author_id;
+
+      // Ne pas créer de notification si l'auteur commente son propre post
+      if (postAuthorId !== user.id) {
+        await supabase.from("notifications").insert({
+          user_id: postAuthorId, // destinataire de la notification
+          from_user: user.id,    // utilisateur qui a commenté
+          type: "comment",
+          post_id: postId,
+        });
+      }
+    }
+
+    
   };
 
   const onEmojiClick = (emojiObject: any) => {
     setContent((prev) => prev + emojiObject.emoji);
-    setShowEmojiPicker(false);
+    setShowEmojiPicker(true);
   };
 
   return (
     <Stack gap="sm">
       {/* Liste des commentaires uniques */}
       {[...new Map(comments.map((c) => [c.id, c])).values()].map((c, index) => (
-        <Stack key={c.id || index} gap={4}>
+        <Stack key={c.id || index} gap={4} id={`comment-${c.id}`}>
           <Group align="flex-start">
             <Avatar src={c.profiles?.avatar_url || ""} radius="xl" size="sm" />
             <Stack gap={0}>
@@ -123,7 +161,27 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
       </Group>
 
       {showEmojiPicker && (
-        <div style={{ width: "100%" }}>
+       
+        <div
+          style={{
+            width: "100%",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 8,
+            position: "relative",
+            backgroundColor: "#fff",
+          }}
+        >
+          {/* Bouton Fermer */}
+          <Button
+            variant="subtle"
+            size="xs"
+            style={{ position: "absolute", top: 5, right: 5 }}
+            onClick={() => setShowEmojiPicker(false)}
+          >
+            ✕ Fermer
+          </Button>
+
           <Picker onEmojiClick={(emoji) => onEmojiClick(emoji)} />
         </div>
       )}

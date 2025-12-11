@@ -20,6 +20,8 @@ import { smoothScrollTo } from "@/utils/smoothScroll";
 import { House, Users, MessageCircle, UsersRound, CircleUser } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { signOut } from "@/utils/auth";
+import NotificationsMenu from "@/components/NotificationsMenu";
+
 
 export default function Navbar() {
  
@@ -31,9 +33,8 @@ export default function Navbar() {
 
   const navLinks = [
     { label: "Posts", icon: House, href: "/posts" },
-    { label: "Amis", icon: Users, href: "#" },
+    { label: "Amis", icon: Users, href: "/friends" },
     { label: "Messages", icon: MessageCircle, href: "/chat" },
-    { label: "Groupes", icon: UsersRound, href: "#" },
   ];
 
   const handleScroll = (
@@ -52,6 +53,7 @@ export default function Navbar() {
       py="md"
       style={{ position: "sticky", top: 0, zIndex: 999, backdropFilter: "blur(20px)" }}
     >
+
       <Container size="xl">
         <Group justify="space-between" align="center" w="100%">
           <Title order={3} fw={800} fz={22} style={{ letterSpacing: "-1px" }}>
@@ -73,19 +75,20 @@ export default function Navbar() {
                     fz={15}
                     style={{
                       textTransform: "uppercase",
-                      color: pathname === link.href ? theme.colors.indigo[7] : theme.colors.gray[7],
+                      color: pathname === link.href ? theme.colors.indigo[5] : theme.colors.gray[5],
                       display: "flex",
                       alignItems: "center",
                     }}
                     onClick={(e) => handleScroll(e, link.href)}
                   >
                     <Flex align="center" gap={8}>
-                      <Icon size={16} />
+                      <Icon size={18} />
                       {link.label}
                     </Flex>
                   </Anchor>
                 );
               })}
+
             </Group>
           )}
 
@@ -98,8 +101,6 @@ export default function Navbar() {
                 left: 0,
                 right: 0,
                 height: "60px",
-                backgroundColor: "rgba(255,255,255,0.8)",
-                backdropFilter: "blur(10px)",
                 borderTop: "1px solid #e0e0e0",
                 zIndex: 9999,
               }}
@@ -116,20 +117,63 @@ export default function Navbar() {
                         href={link.href}
                         underline="never"
                         style={{
-                          color: active ? "#364FC7" : "gray",
+                          color: active ? "#364FC7" : "gray.5",
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           fontSize: "10px",
                         }}
                       >
-                        <Icon size={16} />
+                        <Icon size={18} />
                       </Anchor>
                     );
                   })}
+
+                  
                 </Group>
 
-                <ThemeToggle />
+                {/*<ThemeToggle />*/}
+                <Group gap="sm">
+                  <NotificationsMenu />
+                  <ThemeToggle />
+                  <Menu shadow="md" width={200} position="bottom-end">
+                    <Menu.Target>
+                      <Avatar
+                        color="#364FC7"
+                        src={profile?.avatar_url || null}
+                        radius="xl"
+                        size="md"
+                        style={{ cursor: "pointer" }}
+                      />
+                    </Menu.Target>
+
+                    <Menu.Dropdown>
+                      {/* User info */}
+                      <Box px="md" py={5}>
+                        <Text fw={600}>{profile?.full_name || profile?.username}</Text>
+                        <Text size="xs" c="dimmed">{user?.email}</Text>
+                      </Box>
+
+                      <Menu.Divider />
+
+                      <Menu.Item component={Link} href="#">
+                        Mon profil
+                      </Menu.Item>
+
+                      <Menu.Item component={Link} href="#">
+                        Paramètres
+                      </Menu.Item>
+
+                      <Menu.Divider />
+
+                      <Menu.Item color="red" component={Link} onClick={() => signOut(router)} href="/logout">
+                        Déconnexion
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                </Group>
+                
+                
               </Group>
             </Box>
           )}
@@ -137,8 +181,8 @@ export default function Navbar() {
           {/* Desktop theme toggle + user icon */}
           {isDesktop && (
             <Group gap="sm">
+              <NotificationsMenu />
               <ThemeToggle />
-              {/*<CircleUser color="#364FC7" size={26} />*/}
               <Menu shadow="md" width={200} position="bottom-end">
                 <Menu.Target>
                   <Avatar

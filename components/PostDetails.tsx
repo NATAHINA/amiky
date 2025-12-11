@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import CommentsAlert from "@/components/CommentsAlert";
+import PostMediaGrid from "@components/PostMediaGrid";
 
 export default function SinglePostPage() {
   const { id } = useParams();
@@ -37,6 +38,7 @@ export default function SinglePostPage() {
         content,
         created_at,
         media_urls,
+        author_id,
         profiles:author_id (
           id,
           full_name,
@@ -59,6 +61,7 @@ export default function SinglePostPage() {
         comments_count: data.comments?.[0]?.count || 0,
         views: data.views?.[0]?.count || 0,
         media_urls: data.media_urls || null,
+        author_id: data.author_id,
       });
     }
 
@@ -126,31 +129,14 @@ export default function SinglePostPage() {
           <Group>
             <Avatar src={post.profiles.avatar_url} radius="xl" />
             <Stack gap={0}>
-              <Text fw={700}>{post.profiles.full_name}</Text>
+              <Text fw={700}>{post.profiles.full_name || post.profiles.username}</Text>
               <Text size="xs" c="dimmed">@{post.profiles.username}</Text>
             </Stack>
           </Group>
 
         </Group>
 
-
-        {Array.isArray(post.media_urls) &&
-          post.media_urls.map((media: string, i: number) => (
-            media.endsWith(".mp4") ? (
-              <video key={i} controls style={{ width: "100%", borderRadius: 8, marginTop: 16 }}>
-                <source src={media} type="video/mp4" />
-              </video>
-            ) : (
-              <img
-                key={i}
-                src={media}
-                alt={`media-${i}`}
-                style={{ width: "100%", borderRadius: 8, marginTop: 16 }}
-              />
-            )
-          ))
-        }
-
+        {post.media_urls && <PostMediaGrid media_urls={post.media_urls} />}
 
         <Text mt="md" size="md">{post.content}</Text>
 
