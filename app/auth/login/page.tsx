@@ -105,6 +105,9 @@ export default function LoginPage() {
             <Button fullWidth mt="xl" onClick={handleLogin} loading={loading}>
               Se connecter
             </Button>
+            <Anchor component={Link} href="/" size="sm">
+            ← Retour à la page d'accueil
+          </Anchor>
           </Stack>
         </Paper>
       </Container>

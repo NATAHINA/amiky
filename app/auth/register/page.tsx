@@ -157,6 +157,10 @@ export default function SignupPage() {
               <Button fullWidth mt="xl" onClick={handleSignup} loading={loading}>
                 S'inscrire
               </Button>
+
+              <Anchor component={Link} href="/" size="sm">
+              ← Retour à la page d'accueil
+            </Anchor>
             </Stack>
           </Box>
         </Paper>

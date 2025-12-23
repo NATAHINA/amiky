@@ -14,10 +14,10 @@ export default function Footer() {
   return (
     <footer style={{ marginTop: "auto" }}>
       <Container size="xl" py="md">
-        <Group justify="space-between" align="center">
+        <Group justify="center" align="center">
           <Text size="sm">© {new Date().getFullYear()} - Tous droits réservés.</Text>
 
-          <Group>
+          {/*<Group>
             {footLinks.map((link, i) => {
               const Icon = link.icon;
               return (
@@ -33,7 +33,7 @@ export default function Footer() {
                 </Anchor>
               );
             })}
-          </Group>
+          </Group>*/}
 
         </Group>
       </Container>

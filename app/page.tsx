@@ -59,17 +59,26 @@ const skillsData = [
 ];
 
 const data = [
+
   {
-    image:
-      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&q=80",
-    title: "Nouveaux amis rencontrés lors d'un meetup tech",
-    category: "social",
+    image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&q=80",
+    title: "Partagez vos moments forts en un instant",
+    category: "Partage",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80",
-    title: "Partage de setup pour développeurs modernes",
-    category: "tech",
+    image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=800&q=80",
+    title: "Des discussions sécurisées et privées",
+    category: "Sécurité",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80",
+    title: "Retrouvez vos collègues après le travail",
+    category: "Meetup",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=800&q=80",
+    title: "Rencontrez de nouvelles personnes passionnées",
+    category: "Social",
   },
   {
     image:
@@ -88,12 +97,6 @@ const data = [
       "https://images.unsplash.com/photo-1527203561188-dae1bc1a417f?auto=format&fit=crop&w=400&q=80",
     title: "Idées pour booster votre créativité",
     category: "inspiration",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=400&q=80",
-    title: "Exploration urbaine : spots à découvrir",
-    category: "urban",
   },
 ];
 
@@ -132,7 +135,7 @@ export default function Home() {
         transition={{ duration: 0.6 }}
       >
         <Container fluid style={{ 
-          background: 'url(./fond.avif)', 
+          backgroundImage: 'url(/fond.avif)',
           backgroundSize: "cover",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center"}} c="white" pt={{base: 180, md: 250}} pl={{base: 30}} pb={{base: 180, md: 250}} pr={{base: 30}}>
