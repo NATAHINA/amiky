@@ -99,35 +99,6 @@ export default function NotificationsMenu() {
   };
 
 
-  // const handleNotificationClick = async (n: Notification) => {
-
-  //   setNotifications((prev) =>
-  //     prev.map((notif) =>
-  //       notif.id === n.id ? { ...notif, read: true } : notif
-  //     )
-  //   );
-    
-  //   setUnreadCount((prev) => prev - 1);
-
-    // switch (n.type) {
-    //   case "comment":
-    //     if (n.post_id) router.push(`/posts/${n.post_id}`);
-    //     break;
-    //   case "like":
-    //     if (n.post_id) router.push(`/posts/${n.post_id}`);
-    //     break;
-    //   case "message":
-    //     router.push(`/chat`);
-    //     break;
-    //   case "follow":
-    //     if (n.from_user) router.push(`/profile/${n.from_user}`);
-    //     break;
-    //   default:
-    //     break;
-    // }
-
-  // };
-
   useEffect(() => {
     loadNotifications();
 
