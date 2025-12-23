@@ -53,17 +53,10 @@ export default function PostMediaGrid({ media_urls }: Props) {
             cursor: "pointer",
           };
 
-          if (media.endsWith(".mp4")) {
-            return (
-              <video key={i} controls style={commonStyles} onClick={() => handleOpen(i)}>
-                <source src={media} type="video/mp4" />
-              </video>
-            );
-          } else {
-            return (
-              <Image key={i} src={media} alt={`media-${i}`} style={commonStyles} onClick={() => handleOpen(i)} />
-            );
-          }
+          return (
+            <Image key={i} src={media} alt={`media-${i}`} style={commonStyles} onClick={() => handleOpen(i)} />
+          );
+
         })}
 
         {media_urls.length > 4 && (

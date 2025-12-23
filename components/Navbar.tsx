@@ -17,10 +17,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { usePathname, useRouter  } from "next/navigation";
 import { smoothScrollTo } from "@/utils/smoothScroll";
-import { House, Users, MessageCircle, UsersRound, CircleUser } from "lucide-react";
+import { House, Users, MessageCircle, UsersRound, CircleUser, ChevronDown } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { signOut } from "@/utils/auth";
 import NotificationsMenu from "@/components/NotificationsMenu";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 
 export default function Navbar() {
@@ -30,6 +32,25 @@ export default function Navbar() {
   const { user, profile } = useUser();
   const router = useRouter();
   const theme = useMantineTheme();
+
+  const [currentProfile, setCurrentProfile] = useState(profile);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (data) setCurrentProfile(data);
+    };
+
+    fetchProfile();
+  }, [user?.id, profile?.avatar_url]);
+
 
   const navLinks = [
     { label: "Posts", icon: House, href: "/posts" },
@@ -46,6 +67,8 @@ export default function Navbar() {
       smoothScrollTo(href, 600);
     }
   };
+
+  const avatarUrl = currentProfile?.avatar_url ? `${currentProfile?.avatar_url}?v=${Date.now()}` : null;
 
   return (
     <Box
@@ -138,16 +161,25 @@ export default function Navbar() {
                   <ThemeToggle />
                   <Menu shadow="md" width={200} position="bottom-end">
                     <Menu.Target>
-                      <Avatar
-                        color="#364FC7"
-                        src={profile?.avatar_url || null}
-                        radius="xl"
-                        size="md"
-                        style={{ cursor: "pointer" }}
-                      />
+                      <div style={{ position: "relative", display: "inline-block", cursor: "pointer" }}>
+                        <Avatar
+                          color="#364FC7"
+                          src={avatarUrl}
+                          radius="xl"
+                          size="md"
+                        />
+                        <ChevronDown size={16} style={{
+                          position: "absolute",
+                          bottom: 0,
+                          right: -8,
+                          backgroundColor: "white",
+                          borderRadius: "50%",
+                          padding: 2,
+                        }}/>
+                      </div>
                     </Menu.Target>
 
-                    <Menu.Dropdown>
+                    <Menu.Dropdown mt={8}>
                       {/* User info */}
                       <Box px="md" py={5}>
                         <Text fw={600}>{profile?.full_name || profile?.username}</Text>
@@ -156,17 +188,11 @@ export default function Navbar() {
 
                       <Menu.Divider />
 
-                      <Menu.Item component={Link} href="#">
+                      <Menu.Item component={Link} href={`/profile/${user?.id}`}>
                         Mon profil
                       </Menu.Item>
 
-                      <Menu.Item component={Link} href="#">
-                        Paramètres
-                      </Menu.Item>
-
-                      <Menu.Divider />
-
-                      <Menu.Item color="red" component={Link} onClick={() => signOut(router)} href="/logout">
+                      <Menu.Item color="red" onClick={() => signOut(router)}>
                         Déconnexion
                       </Menu.Item>
                     </Menu.Dropdown>
@@ -185,16 +211,25 @@ export default function Navbar() {
               <ThemeToggle />
               <Menu shadow="md" width={200} position="bottom-end">
                 <Menu.Target>
-                  <Avatar
-                    color="#364FC7"
-                    src={profile?.avatar_url || null}
-                    radius="xl"
-                    size="md"
-                    style={{ cursor: "pointer" }}
-                  />
+                  <div style={{ position: "relative", display: "inline-block", cursor: "pointer" }}>
+                    <Avatar
+                      color="#364FC7"
+                      src={avatarUrl}
+                      radius="xl"
+                      size="md"
+                    />
+                    <ChevronDown size={16} style={{
+                      position: "absolute",
+                      bottom: 0,
+                      right: -8,
+                      backgroundColor: "white",
+                      borderRadius: "50%",
+                      padding: 2,
+                    }}/>
+                  </div>
                 </Menu.Target>
 
-                <Menu.Dropdown>
+                <Menu.Dropdown mt={8}>
                   {/* User info */}
                   <Box px="md" py={5}>
                     <Text fw={600}>{profile?.full_name || profile?.username}</Text>
@@ -203,17 +238,11 @@ export default function Navbar() {
 
                   <Menu.Divider />
 
-                  <Menu.Item component={Link} href="#">
+                  <Menu.Item component={Link} href={`/profile/${user?.id}`}>
                     Mon profil
                   </Menu.Item>
 
-                  <Menu.Item component={Link} href="#">
-                    Paramètres
-                  </Menu.Item>
-
-                  <Menu.Divider />
-
-                  <Menu.Item color="red" component={Link} onClick={() => signOut(router)} href="/logout">
+                  <Menu.Item color="red" onClick={() => signOut(router)}>
                     Déconnexion
                   </Menu.Item>
                 </Menu.Dropdown>

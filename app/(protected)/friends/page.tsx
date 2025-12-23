@@ -1,12 +1,14 @@
+
+
 "use client";
 
 import { useEffect, useState } from "react";
 import FriendList from "@components/FriendList";
 import SuggestionsList from "@components/SuggestionsList";
+import Invitations from "@components/Invitations";
 import { Container, Text, Stack, Card, Grid, Divider, TextInput } from "@mantine/core";
 import { supabase } from "@/lib/supabaseClient";
-// import { useRouter } from "next/navigation";
-import { MessageCircle, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -16,25 +18,18 @@ interface Profile {
   bio?: string | null;
 }
 
-
 export default function FriendPage() {
-  // const [friends, setFriends] = useState<any[]>([]);
-  // const [suggestions, setSuggestions] = useState<any[]>([]);
-  // const [currentUser, setCurrentUser] = useState<any>(null);
   const [searchFriend, setSearchFriend] = useState("");
-  const [searchSuggeste, setSearchSuggeste] = useState("");
-
+  const [searchSuggest, setSearchSuggest] = useState("");
   const [friends, setFriends] = useState<Profile[]>([]);
   const [suggestions, setSuggestions] = useState<Profile[]>([]);
-  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
-
-  // const router = useRouter();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      setCurrentUser(user);
+      setCurrentUserId(user.id);
       loadFriendsAndSuggestions(user.id);
     };
     init();
@@ -43,138 +38,128 @@ export default function FriendPage() {
 
   const loadFriendsAndSuggestions = async (userId: string) => {
     try {
-      const friendsRes = await supabase
+      const { data: followersData, error: followersError } = await supabase
         .from("followers")
-        .select("following_id")
+        .select("following_id, status")
         .eq("follower_id", userId);
 
-      const allProfilesRes = await supabase
+      if (followersError || !followersData) {
+        console.error("Erreur followers:", followersError);
+        setFriends([]);
+        return; 
+      }
+
+      const { data: allProfiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
         .neq("id", userId);
 
-      const followedIds = friendsRes.data?.map(f => f.following_id) || [];
+      const followedOrPendingIds = followersData
+        .filter(f => f.status === "accepted" || f.status === "pending")
+        .map(f => f.following_id);
 
-      // Recharger les vrais amis
-      const friendsProfiles = await supabase
-        .from("profiles")
-        .select("*")
-        .in("id", followedIds);
+      const acceptedIds = followersData
+        .filter(f => f.status === "accepted")
+        .map(f => f.following_id);
 
-      setFriends(friendsProfiles.data ?? []);
+      if (acceptedIds.length > 0) {
+        const { data: friendsProfiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", acceptedIds);
+        
+        setFriends(friendsProfiles ?? []);
+      } else {
+        setFriends([]);
+      }
 
-      // Filtrer les suggestions
       const suggestionsFiltered =
-        allProfilesRes.data?.filter(p => !followedIds.includes(p.id)) ?? [];
+        allProfiles?.filter(p => !followedOrPendingIds.includes(p.id)) ?? [];
 
       setSuggestions(suggestionsFiltered);
+
     } catch (err) {
       console.error("Erreur loadFriendsAndSuggestions :", err);
     }
   };
 
-
-  const handleFollow = async (targetId: string) => {
-    if (!currentUser) return;
-
-    const { error } = await supabase.from("followers").insert({
-      follower_id: currentUser.id,
-      following_id: targetId
-    });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    // Recharger immédiatement les listes
-    await loadFriendsAndSuggestions(currentUser.id);
-
-    await supabase.from("notifications").insert({
-      user_id: targetId,
-      from_user_id: currentUser.id,
-      type: "follow"
-    });
-
-  };
-
   const handleUnfollow = async (targetId: string) => {
-    if (!currentUser) return;
+    if (!currentUserId) return;
 
     const { error } = await supabase
       .from("followers")
       .delete()
-      .eq("follower_id", currentUser.id)
-      .eq("following_id", targetId);
+      .or(
+        `and(follower_id.eq.${currentUserId},following_id.eq.${targetId}),and(follower_id.eq.${targetId},following_id.eq.${currentUserId})`
+      );
+      
 
     if (error) {
       console.error(error);
       return;
     }
 
-    // Recharger immédiatement les listes
-    await loadFriendsAndSuggestions(currentUser.id);
+    await loadFriendsAndSuggestions(currentUserId);
   };
 
-
-  const filteredFriend: Profile[] = friends.filter(p =>
-    p.full_name?.toLowerCase().includes(searchFriend.toLowerCase()) || 
+  const filteredFriends = friends.filter(p =>
+    p.full_name?.toLowerCase().includes(searchFriend.toLowerCase()) ||
     p.username?.toLowerCase().includes(searchFriend.toLowerCase())
   );
 
-  // const filteredSuggestion = suggestions[].filter(p =>
-  //   p.full_name?.toLowerCase().includes(searchSuggeste.toLowerCase()) || p.username?.toLowerCase().includes(searchSuggeste.toLowerCase())
-  // );
-
-  const filteredSuggestion: Profile[] = suggestions.filter(p =>
-    p.full_name?.toLowerCase().includes(searchSuggeste.toLowerCase()) ||
-    p.username?.toLowerCase().includes(searchSuggeste.toLowerCase())
+  const filteredSuggestions = suggestions.filter(p =>
+    p.username?.toLowerCase().includes(searchSuggest.toLowerCase()) ||
+    p.full_name?.toLowerCase().includes(searchSuggest.toLowerCase())
   );
-
 
   return (
     <Container size="xl">
       <Stack mt={30}>
-          <Text fz={17} mb={15} fw={600}><Users size={14} /> Amis</Text>
-          <Divider />
-          <Grid>
-            <Grid.Col span={{ xs: 12, sm: 6 }}>
-              <Grid>
-                
-                <Grid.Col span={{ xs: 12 }}>
-                  <Card shadow="sm" padding="sm" withBorder>
-                    
-                    <Text fz={14} mb={15} fw={600}>Amis suivi</Text>
-                    <TextInput
-                      placeholder="Rechercher un amis..."
-                      value={searchFriend}
-                      onChange={(e) => setSearchFriend(e.currentTarget.value)}
-                      mb={20}
-                    />
-                    <FriendList friends={filteredFriend} handleUnfollow={handleUnfollow} />
-                  </Card>
-                </Grid.Col>
-              </Grid>
-            </Grid.Col>
+        <Text fz={17} mb={15} fw={600}><Users size={14} /> Amis</Text>
+        <Divider />
+        <Grid>
+          <Grid.Col span={{ xs: 12, sm: 4 }}>
+            <Card shadow="sm" padding="sm" withBorder>
+              <Text fz={16} mb={15} fw={600}>Tout(es) les ami(e)s</Text>
+              <TextInput
+                placeholder="Rechercher un ami..."
+                value={searchFriend}
+                onChange={(e) => setSearchFriend(e.currentTarget.value)}
+                mb={20}
+              />
+              {currentUserId && (
+                <FriendList friends={filteredFriends} currentUserId={currentUserId} />
+              )}
+            </Card>
+          </Grid.Col>
 
-            <Grid.Col span={{ xs: 12, sm: 6}}>
-              <Grid>
-                <Grid.Col span={{ xs: 12 }}>
-                <Card shadow="sm" padding="sm" withBorder>
-                  <Text fz={14} mb={15} fw={600}>Suggestions</Text>
-                  <TextInput
-                      placeholder="Rechercher quelqu'un..."
-                      value={searchSuggeste}
-                      onChange={(e) => setSearchSuggeste(e.currentTarget.value)}
-                      mb={20}
-                    />
-                  <SuggestionsList suggestions={filteredSuggestion} handleFollow={handleFollow} />
-                </Card>
-              </Grid.Col>
-              </Grid>
-            </Grid.Col>
-          </Grid>
-        </Stack>
+          <Grid.Col span={{ xs: 12, sm: 8 }}>
+
+            <Card shadow="sm" padding="sm" mb={20} withBorder>
+              <Text fz={16} mb={15} fw={600}>Invitations</Text>
+              
+              {currentUserId && <Invitations currentUserId={currentUserId} />}
+              
+            </Card>
+
+            <Card shadow="sm" padding="sm" withBorder>
+              <Text fz={16} mb={15} fw={600}>Suggestions</Text>
+              <TextInput
+                placeholder="Rechercher quelqu'un..."
+                value={searchSuggest}
+                onChange={(e) => setSearchSuggest(e.currentTarget.value)}
+                mb={20}
+              />
+              {currentUserId && (
+                <SuggestionsList
+                  suggestions={filteredSuggestions}
+                  currentUserId={currentUserId}
+                />
+              )}
+            </Card>
+          </Grid.Col>
+        </Grid>
+      </Stack>
     </Container>
   );
 }

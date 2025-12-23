@@ -45,7 +45,7 @@ export default function LoginPage() {
       setTimeout(() => setError(null), 5000);
 
     } else {
-      router.push("/home"); // redirige vers la page d’accueil après login
+      router.push("/posts"); // redirige vers la page d’accueil après login
     }
   };
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
       style={{ minHeight: "100vh" }} // prend toute la hauteur de l'écran
     >
       <Container size="xl">
-        <Paper withBorder shadow="md" p={40} mt={30} w={450} radius="md">
+        <Paper withBorder shadow="md" p={35} mt={30} w={450} radius="md">
           <Title mb={15} ta="center" order={2} fw={800} size="xl" fz={32} style={{ letterSpacing: "-1px" }}>
             A<span style={{ color: "#364FC7" }}>MIKY</span>
           </Title>
@@ -80,12 +80,22 @@ export default function LoginPage() {
               required
             />
 
-            <Text color="dimmed" size="sm" ta="center" mt={5} mb={10}>
-              Vous n'avez pas un compte ? 
-              <Anchor component={Link} href="/auth/register" size="sm" ml={10}>
-                Inscrivez-vous
+            <Flex justify="space-between" mt="xs">
+              <Text size="sm">
+                Pas de compte ?
+                <Anchor component={Link} href="/auth/register" ml={5}>
+                  S'inscrire
+                </Anchor>
+              </Text>
+
+              <Anchor
+                component={Link}
+                href="/auth/forgot-password"
+                size="sm"
+              >
+                Mot de passe oublié
               </Anchor>
-            </Text>
+            </Flex>
 
             {error && (
               <Alert variant="filled" color="red" title="">

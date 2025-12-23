@@ -47,7 +47,6 @@ const HomePage: React.FC<HomePageProps> = ({ children }) => {
     return (
       <Center style={{ height: "100vh" }}>
         <Loader variant="dots" />
-        <Text mt="sm">Chargement...</Text>
       </Center>
     );
   }
@@ -74,3 +73,7 @@ const HomePage: React.FC<HomePageProps> = ({ children }) => {
 };
 
 export default HomePage;
+
+
+
+

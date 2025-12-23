@@ -2,12 +2,14 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { Group, Stack, Avatar, Text, Button, Paper, Flex, Menu, ActionIcon } from "@mantine/core";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Stack, Group, Avatar, Text, Button, Menu, ActionIcon, ScrollArea, Flex, Paper
+} from "@mantine/core";
 import { UserMinus, MessageCircle, X, Ellipsis } from "lucide-react";
 import PrivateChat from "./PrivateChat";
 import { supabase } from "@/lib/supabaseClient";
-
+import Link from "next/link";
 
 interface Friend {
   id: string;
@@ -17,23 +19,57 @@ interface Friend {
   last_active?: string;
 }
 
-
 interface FriendListProps {
   friends: Friend[];
-  handleUnfollow: (friendId: string) => void;
-  otherUserId?: string;
+  currentUserId: string;
 }
 
-export default function FriendList({ friends = [], handleUnfollow, otherUserId }: FriendListProps) {
-  const [opened, setOpened] = useState(false);
+export default function FriendList({ friends, currentUserId }: FriendListProps) {
+  const [friendList, setFriendList] = useState<Friend[]>([]);
+  const [openedChat, setOpenedChat] = useState(false);
   const [currentChatUser, setCurrentChatUser] = useState<Friend | null>(null);
-  const [friendList, setFriendList] = useState<Friend[]>(friends);
-  const [, forceUpdate] = useState(0);
+
+  // 🔹 Récupération amis acceptés
+  const fetchFriends = useCallback(async () => {
+  try {
+    // 1️⃣ Récupérer les ids des amis acceptés
+    const { data: followersData, error: followerError } = await supabase
+      .from("followers")
+      .select("following_id")
+      .eq("status", "accepted")
+      .eq("follower_id", currentUserId);
+
+    if (followerError) throw followerError;
+
+    const friendIds = followersData?.map(f => f.following_id).filter(Boolean);
+
+    if (!friendIds || friendIds.length === 0) {
+      setFriendList([]);
+      return;
+    }
+
+    // 2️⃣ Récupérer les profils correspondants
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, avatar_url, last_active")
+      .in("id", friendIds);
+
+    if (profileError) throw profileError;
+
+    setFriendList(profiles || []);
+  } catch (err) {
+    console.error("Erreur fetching friends:", err);
+    setFriendList([]);
+  }
+}, [currentUserId]);
+
 
   useEffect(() => {
-    setFriendList(friends);
-  }, [friends]);
+    if (!currentUserId) return;
+    fetchFriends();
+  }, [currentUserId, fetchFriends]);
 
+  
 
   useEffect(() => {
     const channel = supabase
@@ -42,13 +78,10 @@ export default function FriendList({ friends = [], handleUnfollow, otherUserId }
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "profiles" },
         (payload) => {
-          const updated = payload.new;
-
+          const updated = payload.new as any;
           setFriendList((prev) =>
-            prev.map((f) =>
-              f.id === updated.id
-                ? { ...f, last_active: updated.last_active }
-                : f
+            prev.map((f) => 
+              f.id === updated.id ? { ...f, last_active: updated.last_active } : f
             )
           );
         }
@@ -58,147 +91,125 @@ export default function FriendList({ friends = [], handleUnfollow, otherUserId }
     return () => {
       supabase.removeChannel(channel);
     };
-
   }, []);
-
-
+  
   useEffect(() => {
-    const intervalUpdate = setInterval(async () => {
-      if (!currentChatUser?.id) return;
+    if (!currentChatUser?.id) return;
+    const interval = setInterval(async () => {
       await supabase
         .from("profiles")
         .update({ last_active: new Date().toISOString() })
-        .eq("id", currentChatUser.id);
-    }, 5000);
+        .eq("id", currentUserId);
+    }, 10000);
 
-    return () => clearInterval(intervalUpdate);
-  }, [currentChatUser?.id]);
-
-
-  useEffect(() => {
-    const intervalRender = setInterval(() => {
-      forceUpdate((n) => n + 1);
-    }, 5000);
-
-    return () => clearInterval(intervalRender);
-  }, []);
-
+    return () => clearInterval(interval);
+  }, [currentChatUser, currentUserId]);
 
   const isOnline = (user: Friend) => {
     if (!user?.last_active) return false;
-    const lastActive = new Date(user.last_active).getTime();
-    const now = Date.now();
-    return now - lastActive <= 60 * 1000;
+    return Date.now() - new Date(user.last_active).getTime() <= 60 * 1000;
   };
-  
-  if (!friends || friends.length === 0) {
-    return <Text fz={14} c="dimmed" ta="center">Aucun ami suivi.</Text>;
-  }
 
   const timeAgo = (dateString?: string) => {
     if (!dateString) return "Hors ligne";
-
     const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-
     if (seconds < 60) return `En ligne il y a ${seconds}s`;
-
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `En ligne il y a ${minutes}min`;
-
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `En ligne il y a ${hours}h`;
-
     const days = Math.floor(hours / 24);
     return `En ligne il y a ${days}j`;
   };
 
-
   
+  const handleUnfollow = async (targetId: string) => {
+    if (!currentUserId || !targetId) return;
+
+    setFriendList(prev => prev.filter(f => f.id !== targetId));
+
+    const { error } = await supabase
+      .from("followers")
+      .delete()
+      .or(`follower_id.eq.${currentUserId},following_id.eq.${currentUserId}`)
+      .or(`follower_id.eq.${targetId},following_id.eq.${targetId}`);
+
+    if (error) {
+      console.error("Erreur lors de la suppression :", error);
+      
+      fetchFriends(); 
+    }
+  };
+
+  if (!friends.length) return <Text fz={14} c="dimmed" ta="center">Aucun ami trouvé.</Text>;
 
   return (
-    <Stack>
-      {friendList.map(f => (
-        <Group key={f.id} justify="space-between">
-          <Group>
-            <div style={{ position: "relative" }}>
-              <Avatar src={f.avatar_url} radius="xl" />
-              {isOnline(f) && (
-                <span style={{
-                  position: "absolute",
-                  bottom: 0,
-                  right: 0,
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  backgroundColor: "green",
-                  border: "2px solid white"
-                }} />
-              )}
+    <>
+      <ScrollArea style={{ maxHeight: 600 }}>
+        <Stack>
+          {friends.map((f) => (
+            <Flex key={f.id} justify="space-between" align="center">
+              <Group>
+                <div style={{ position: "relative" }}>
+                  <Avatar src={f.avatar_url} radius="xl" />
+                  {isOnline(f) && <span style={{
+                    position: "absolute",
+                    bottom: 0,
+                    right: 0,
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    backgroundColor: "green",
+                    border: "2px solid white"
+                  }}/>}
+                </div>
+                <Stack gap={0}>
+                  <Text fz="sm" fw={500} component={Link} href={`/profile/${f.id}`}>
+                    {f.full_name || f.username}
+                  </Text>
+                  {!isOnline(f) && <Text size="xs" c="dimmed">{timeAgo(f.last_active)}</Text>}
+                </Stack>
+              </Group>
 
-            </div>
-            
-            <Stack gap={0}>
-              <Text size="sm" fw={500}>
-                {f.full_name || f.username}
-              </Text>
+              <Group gap={3}>
+                <Menu shadow="md" width={200}>
+                  <Menu.Target>
+                    <ActionIcon size="sm"><Ellipsis size={14} /></ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item leftSection={<MessageCircle size={14} />} onClick={() => {
+                      setCurrentChatUser(f);
+                      setOpenedChat(true);
+                    }}>
+                      Discuter
+                    </Menu.Item>
+                    <Menu.Item leftSection={<UserMinus size={14} />} color="red" onClick={() => handleUnfollow(f.id)}>
+                      Retirer
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
+            </Flex>
+          ))}
+        </Stack>
+      </ScrollArea>
 
-              {!isOnline(f) && (
-                <Text size="xs" c="dimmed">
-                  {timeAgo(f.last_active)}
-                </Text>
-              )}
-            </Stack>
-
-          </Group>
-
-          <Group gap={3}>
-            <Menu shadow="md" width={200}>
-              <Menu.Target>
-                <ActionIcon size="sm">
-                  <Ellipsis size={14}/>
-                </ActionIcon>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                <Menu.Item leftSection={<MessageCircle size={14} />} onClick={() => {
-                    setOpened(!opened);
-                    setCurrentChatUser(f);
-                  }}>
-                  Discuster
-                </Menu.Item>
-                <Menu.Item leftSection={<UserMinus size={14} />} color="red" onClick={() => handleUnfollow(f.id)}>
-                  Retirer
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-
-        </Group>
-
-      ))}
-
-      
-      {opened && currentChatUser && (
-        <Paper
+      {openedChat && currentChatUser && (
+      <Paper
           shadow="md"
           radius="md"
           style={{
             position: "fixed",
-            bottom: 70,
+            bottom: 50,
             right: 20,
-            width: 320,
-            height: 400,
+            width: 350,
+            height: 450,
             zIndex: 1000,
             display: "flex",
             flexDirection: "column",
           }}
         >
-          <Flex
-            justify="space-between"
-            style={{ padding: "8px 12px", borderBottom: "1px solid #eee" }}
-          >
-            
-
+          <Flex justify="space-between" style={{ padding: "8px", borderBottom: "1px solid #eee" }}>
             <Group>
               <div style={{ position: "relative" }}>
                 <Avatar src={currentChatUser.avatar_url} radius="xl" />
@@ -214,28 +225,16 @@ export default function FriendList({ friends = [], handleUnfollow, otherUserId }
                     border: "2px solid white"
                   }} />
                 )}
-               
               </div>
-
               <Stack gap={0}>
-                <Text size="sm" fw={500}>
+                <Text fz="sm" fw={500}>
                   Discuter avec {currentChatUser.full_name || currentChatUser.username}
                 </Text>
-
-                {!isOnline(currentChatUser) && (
-                  <Text size="xs" c="dimmed">
-                    {timeAgo(currentChatUser.last_active)}
-                  </Text>
-                )}
+                {!isOnline(currentChatUser) && <Text size="xs" c="dimmed">{timeAgo(currentChatUser.last_active)}</Text>}
               </Stack>
-              
             </Group>
 
-            <Button
-              size="xs"
-              variant="subtle"
-              onClick={() => setOpened(false)}
-            >
+            <Button size="xs" variant="subtle" onClick={() => setOpenedChat(false)}>
               <X size={14} />
             </Button>
           </Flex>
@@ -245,9 +244,6 @@ export default function FriendList({ friends = [], handleUnfollow, otherUserId }
           </div>
         </Paper>
       )}
-
-    </Stack>
+    </>
   );
 }
-
-

@@ -19,6 +19,8 @@ import {
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import CommentsAlert from "@/components/CommentsAlert";
 import PostMediaGrid from "@components/PostMediaGrid";
+import Link from "next/link";
+import DOMPurify from "dompurify";
 
 export default function SinglePostPage() {
   const { id } = useParams();
@@ -91,27 +93,93 @@ export default function SinglePostPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: existing } = await supabase
+    const { data: existing, error: selectError } = await supabase
       .from("post_likes")
-      .select()
+      .select("id")
       .eq("post_id", id)
       .eq("user_id", user.id)
       .maybeSingle();
 
+    if (selectError) {
+      console.error(selectError);
+      return;
+    }
+
     if (existing) {
-      await supabase.from("post_likes").delete().eq("id", existing.id);
-      setPost((p: any) => ({ ...p, likes_count: p.likes_count - 1 }));
-      setIsLiked(false);
+      const { error } = await supabase
+        .from("post_likes")
+        .delete()
+        .eq("id", existing.id);
+
+      if (!error) {
+        setPost((p: any) => ({ ...p, likes_count: p.likes_count - 1 }));
+        setIsLiked(false);
+      }
     } else {
-      await supabase.from("post_likes").insert({
-        post_id: id,
-        user_id: user.id,
-      });
-      setPost((p: any) => ({ ...p, likes_count: p.likes_count + 1 }));
-      setIsLiked(true);
+      const { error } = await supabase
+        .from("post_likes")
+        .insert({
+          post_id: id,
+          user_id: user.id,
+        });
+
+      if (!error) {
+        setPost((p: any) => ({ ...p, likes_count: p.likes_count + 1 }));
+        setIsLiked(true);
+
+        
+        if (post.author_id && post.author_id !== user.id) {
+          await supabase.from("notifications").insert({
+            user_id: post.author_id,
+            from_user: user.id,
+            type: "like",
+            post_id: post.id
+          });
+        }
+      }
     }
   };
 
+  function formatDetailsPostDate(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Format heure : HH:MM
+    const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const timeString = timeFormatter.format(date);
+
+    if (
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
+    ) {
+      return `Aujourd'hui à ${timeString}`; 
+    } else if (diffDays === 1) {
+      return `Hier à ${timeString}`;
+    } else if (diffDays === 2) {
+      return `Avant-hier à ${timeString}`;
+    } else if (diffDays < 7) {
+      const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
+      const dayName = dayFormatter.format(date);
+
+      const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+
+      return `${dayNameCapitalized} à ${timeString}`;
+    } else {
+      const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return `${fullFormatter.format(date)} à ${timeString}`;
+    }
+  }
 
   if (loading || !post) {
     return (
@@ -129,7 +197,7 @@ export default function SinglePostPage() {
           <Group>
             <Avatar src={post.profiles.avatar_url} radius="xl" />
             <Stack gap={0}>
-              <Text fw={700}>{post.profiles.full_name || post.profiles.username}</Text>
+              <Text fw={700} component={Link} href={`/profile/${post.author_id}`}>{post.profiles.full_name || post.profiles.username}</Text>
               <Text size="xs" c="dimmed">@{post.profiles.username}</Text>
             </Stack>
           </Group>
@@ -138,7 +206,13 @@ export default function SinglePostPage() {
 
         {post.media_urls && <PostMediaGrid media_urls={post.media_urls} />}
 
-        <Text mt="md" size="md">{post.content}</Text>
+        <Text size="sm" c="dimmed" mb={20}>{formatDetailsPostDate(post.created_at)}</Text>
+
+        <div
+          dangerouslySetInnerHTML={{
+            __html: DOMPurify.sanitize(post.content.replace(/\n/g, "<br />")),
+          }}
+        />
 
         <Group mt="lg">
           <ActionIcon

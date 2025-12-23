@@ -168,6 +168,46 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
     }
   };
 
+  function formatMessageDate(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Format heure : HH:MM
+    const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const timeString = timeFormatter.format(date);
+
+    if (
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
+    ) {
+      return timeString; 
+    } else if (diffDays === 1) {
+      return `Hier à ${timeString}`;
+    } else if (diffDays === 2) {
+      return `Avant-hier à ${timeString}`;
+    } else if (diffDays < 7) {
+      const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
+      const dayName = dayFormatter.format(date);
+
+      const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+
+      return `${dayNameCapitalized} à ${timeString}`;
+    } else {
+      const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return `${fullFormatter.format(date)} à ${timeString}`;
+    }
+  }
 
   const onEmojiClick = (emojiObject: any) => {
     setText((prev) => prev + emojiObject.emoji);
@@ -183,7 +223,7 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
 
           return (
             <div
-              key={msg.id} // ici msg.id doit être unique
+              key={msg.id} 
               style={{
                 display: "flex",
                 justifyContent: isMine ? "flex-end" : "flex-start",
@@ -209,10 +249,7 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
                     opacity: 0.7,
                   }}
                 >
-                  {new Date(msg.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatMessageDate(msg.created_at)}
                 </div>
               </div>
             </div>

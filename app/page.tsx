@@ -148,6 +148,7 @@ export default function Home() {
               radius="sm"
               variant="filled"
               mt="md"
+              onClick={() => router.push('/auth/login')}
             >
               Commencer maintenant
             </Button>
