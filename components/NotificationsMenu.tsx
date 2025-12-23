@@ -87,9 +87,7 @@ export default function NotificationsMenu() {
       case "like":
         if (n.post_id) router.push(`/posts/${n.post_id}`);
         break;
-      case "message":
-        router.push(`/chat`);
-        break;
+      
       case "follow":
         if (n.from_user) router.push(`/profile/${n.from_user}`);
         break;
@@ -162,7 +160,13 @@ export default function NotificationsMenu() {
   return (
     <Menu shadow="md" width={320}>
       <Menu.Target>
-        <Indicator processing color="red" disabled={unreadCount === 0}>
+        <Indicator 
+          label={unreadCount > 9 ? '9+' : unreadCount}
+          size={20}
+          withBorder
+          color="red" 
+          disabled={unreadCount === 0}
+        >
           <ActionIcon variant="light">
             <Bell size={18} />
           </ActionIcon>
