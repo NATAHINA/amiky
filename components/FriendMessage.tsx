@@ -31,6 +31,7 @@ interface Conversation {
   participants: string[];
   recipient: Profile;
   last_active: string | null;
+  unread_count: number;
 }
 
 export default function FriendMessage() {
@@ -69,24 +70,21 @@ export default function FriendMessage() {
     return diff < 5 * 60 * 1000;
   };
 
-  
-  const loadFriendsAndConversations = async () => {
-    setLoading(true);
+  const loadFriendsAndConversations = async (silent = false) => {
+  // setLoading(true);
+    if (!silent) setLoading(true);
 
     const { data: auth } = await supabase.auth.getUser();
     const me = auth.user;
     if (!me) return;
 
-    const { data: follows, error: followErr } = await supabase
+    const { data: follows } = await supabase
       .from("followers")
       .select("following_id")
       .eq("follower_id", me.id)
       .eq("status", "accepted");
 
-    if (followErr) console.error(followErr);
-
     const followedIds = follows?.map((f) => f.following_id) ?? [];
-
     if (followedIds.length === 0) {
       setFriends([]);
       setConversations([]);
@@ -94,44 +92,41 @@ export default function FriendMessage() {
       return;
     }
 
-    const { data: profiles, error: profileErr } = await supabase
-      .from("profiles")
-      .select("id, username, full_name, avatar_url, last_active")
-      .in("id", followedIds);
-
-    if (profileErr) console.error(profileErr);
-
-    setFriends(profiles ?? []);
-
-    const { data: convs, error: convErr } = await supabase
-      .from("conversations")
-      .select("*")
-      .contains("participants", [me.id]);
-
-    if (convErr) console.error(convErr);
+    const [{ data: profiles }, { data: convs }, { data: notifications }] = await Promise.all([
+      supabase.from("profiles").select("*").in("id", followedIds),
+      supabase.from("conversations").select("*").contains("participants", [me.id]),
+      supabase.from("notifications").select("*").eq("user_id", me.id).eq("read", false).eq("type", "message")
+    ]);
 
     const finalList: Conversation[] = (profiles ?? []).map((p) => {
-      const existingConv = convs?.find((c) => 
-        c.participants.includes(p.id)
-      );
+      const existingConv = convs?.find((c) => c.participants.includes(p.id));
+      const convId = existingConv?.id ?? `no-conv-${p.id}`;
+
+      const unreadForThisConv = notifications?.filter(n => n.conversation_id === convId).length ?? 0;
 
       return {
-        id: existingConv?.id ?? `no-conv-${p.id}`,
+        id: convId,
         participants: existingConv?.participants ?? [me.id, p.id],
         recipient: p,
         last_active: p.last_active,
-        last_message: null, 
-        updated_at: null, 
+        unread_count: unreadForThisConv, // On injecte le compte ici
       };
     });
 
     setConversations(finalList);
+    setFriends(profiles ?? []);
     setLoading(false);
   };
-
-
+  
+ 
   const handleSelectConv = (conv: Conversation) => {
     setSelectedConv(conv);
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conv.id ? { ...c, unread_count: 0 } : c
+      )
+    );
   };
 
   useEffect(() => {
@@ -226,7 +221,7 @@ export default function FriendMessage() {
                     selectedConv?.id === conv.id ? "#5C7CFA" : undefined,
                 }}
               >
-                <Flex align="center" gap="md">
+                {/*<Flex align="center" gap="md">
                   <Indicator
                     color={isOnline(conv) ? "green" : "gray"}
                     position="bottom-end"
@@ -248,7 +243,42 @@ export default function FriendMessage() {
                       {isOnline(conv) ? "En ligne" : conv.last_active ? timeAgo(conv.last_active) : "Jamais vu"}
                     </Text>
                   </Stack>
+                </Flex>*/}
+
+                <Flex align="center" gap="md" style={{ position: "relative" }}>
+                  <Indicator
+                    color={isOnline(conv) ? "green" : "gray"}
+                    position="bottom-end"
+                    size={12}
+                    offset={5}
+                  >
+                    <Avatar
+                      size="md"
+                      radius="xl"
+                      src={conv.recipient.avatar_url || ""}
+                    />
+                  </Indicator>
+
+                  <Stack gap={0} style={{ flex: 1 }}>
+                    <Text fw={600} fz="sm">
+                      {conv.recipient.full_name || conv.recipient.username}
+                    </Text>
+                    <Text fz="xs" c="dimmed">
+                      {isOnline(conv) ? "En ligne" : conv.last_active ? timeAgo(conv.last_active) : "Jamais vu"}
+                    </Text>
+                  </Stack>
+
+                  {/* AFFICHAGE DU COMPTEUR NON LU */}
+                  {conv.unread_count > 0 && (
+                    <Indicator 
+                      label={conv.unread_count} 
+                      size={20} 
+                      color="red" 
+                      withBorder
+                    />
+                  )}
                 </Flex>
+
               </Card>
             ))}
           </Stack>

@@ -128,6 +128,21 @@ export default function InvitationsPage({ currentUserId }: InvitationsPageProps)
     if (insertError) {
       console.error(insertError);
     }
+
+    const { error: notifError } = await supabase
+    .from("notifications")
+    .insert([
+      {
+        user_id: senderId,      // Celui qui reçoit la notification (l'ancien demandeur)
+        from_user: user.id,     // Celui qui déclenche (vous)
+        type: "accept",         // Type de notification
+        read: false,
+      }
+    ]);
+
+    if (notifError) {
+      console.error("Erreur lors de l'envoi de la notification:", notifError);
+    }
   };
 
   const handleReject = async (senderId: string) => {

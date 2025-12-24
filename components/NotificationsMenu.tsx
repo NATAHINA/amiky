@@ -87,7 +87,9 @@ export default function NotificationsMenu() {
       case "like":
         if (n.post_id) router.push(`/posts/${n.post_id}`);
         break;
-      
+      case "accept":
+        if (n.from_user) router.push(`/profile/${n.from_user}`);
+        break;
       case "follow":
         if (n.from_user) router.push(`/profile/${n.from_user}`);
         break;
@@ -191,8 +193,8 @@ export default function NotificationsMenu() {
                   <Text size="sm"> {n.profiles?.username || n.profiles?.full_name}
                     {n.type === "like" && " a aimé votre post"}
                     {n.type === "follow" && " a envoyé une invitation"}
+                    {n.type === "accept" && " a accepté votre invitation"}
                     {n.type === "comment" && " a commenté votre post"}
-                    {n.type === "message" && " vous a envoyé un message"}
                   </Text>
                   <Text size="xs" c="dimmed">
                     {formatNotifDate(n.created_at)}

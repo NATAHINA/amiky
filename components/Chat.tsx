@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -10,7 +12,7 @@ import {
   ScrollArea,
   Textarea,
   ActionIcon,
-  Box, 
+  Box,
   Button
 } from "@mantine/core";
 import { Send } from "lucide-react";
@@ -46,12 +48,12 @@ export default function Chat({ conversation }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [user, setUser] = useState<any>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  // ------------------------------------------------------------
-  // Récupérer utilisateur actuel
-  // ------------------------------------------------------------
+  // Utilisation de viewportRef pour le ScrollArea de Mantine
+  const viewport = useRef<HTMLDivElement>(null);
+
+  
   useEffect(() => {
     const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -60,11 +62,15 @@ export default function Chat({ conversation }: ChatProps) {
     fetchUser();
   }, []);
 
-  // ------------------------------------------------------------
-  // Charger messages
-  // ------------------------------------------------------------
   const loadMessages = async () => {
+    
     if (!conversation?.id) return;
+
+    
+    if (conversation.id.startsWith("no-conv-")) {
+      setMessages([]);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("messages")
@@ -72,63 +78,130 @@ export default function Chat({ conversation }: ChatProps) {
       .eq("conversation_id", conversation.id)
       .order("created_at", { ascending: true });
 
-    if (error) console.error(error);
-    else setMessages(data ?? []);
+    if (error) {
+      console.error("Erreur détaillée :", error.message);
+    } else {
+      setMessages(data || []);
+      markAsRead();
+    }
   };
 
-  // ------------------------------------------------------------
-  // Envoyer un message
-  // ------------------------------------------------------------
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !user) return;
 
-    const { error } = await supabase.from("messages").insert([
-      {
-        conversation_id: conversation.id,
-        sender_id: user.id,
-        message: newMessage.trim(),
-      },
-    ]);
+  const markAsRead = async () => {
+    if (!user || !conversation?.id || conversation.id.startsWith("no-conv-")) return;
 
-    if (error) console.error(error);
-    else setNewMessage("");
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", user.id)
+      .eq("conversation_id", conversation.id)
+      .eq("type", "message")
+      .eq("read", false); 
+
+    if (error) console.error("Erreur markAsRead:", error.message);
   };
 
-  // ------------------------------------------------------------
-  // Realtime
-  // ------------------------------------------------------------
   useEffect(() => {
-    loadMessages();
+    if (conversation?.id && user?.id) {
+      markAsRead();
+    }
+  }, [conversation.id, user?.id]);
+
+  useEffect(() => {
+    if (!conversation?.id || conversation.id.startsWith("no-conv-")) return;
 
     const channel = supabase
-      .channel("messages")
+      .channel(`chat_realtime_${conversation.id}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
-          scrollToBottom();
+          
+          markAsRead(); 
         }
       )
       .subscribe();
 
-    return () => {
-      channel.unsubscribe();
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [conversation.id]);
-
-  // ------------------------------------------------------------
-  // Scroll automatique
-  // ------------------------------------------------------------
+     
+ 
   const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (viewport.current) {
+      viewport.current.scrollTo({
+        top: viewport.current.scrollHeight,
+        behavior: "smooth",
+      });
     }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !user || !conversation?.id) return;
+
+    const messageText = newMessage.trim();
+    setNewMessage("");
+
+    let activeConversationId = conversation.id;
+
+    if (activeConversationId.startsWith("no-conv-")) {
+      const { data: newConv, error: convError } = await supabase
+        .from("conversations")
+        .insert([
+          { participants: conversation.participants }
+        ])
+        .select()
+        .single();
+
+      if (convError) {
+        console.error("Erreur création conversation:", convError);
+        return;
+      }
+      
+      activeConversationId = newConv.id;
+    }
+
+    const { data: insertedMsg, error: msgError } = await supabase
+      .from("messages")
+      .insert([
+        {
+          conversation_id: activeConversationId,
+          sender_id: user.id,
+          message: messageText,
+        },
+      ])
+      .select()
+      .single();
+
+    if (msgError) {
+      console.error("Erreur envoi message:", msgError);
+      return;
+    }
+
+    const otherUserId = conversation.participants.find((id: string) => id !== user.id);
+    if (otherUserId) {
+      const { error: notifError } = await supabase
+        .from("notifications")
+        .insert([
+          {
+            user_id: otherUserId,
+            from_user: user.id,
+            type: "message",
+            conversation_id: activeConversationId,
+            read: false
+          }
+        ]);
+
+      if (notifError) {
+        console.error("Erreur envoi notification:", notifError);
+      }
+    }
+  };
 
   const onEmojiClick = (emojiObject: any) => {
     setNewMessage((prev) => prev + emojiObject.emoji);
@@ -138,87 +211,47 @@ export default function Chat({ conversation }: ChatProps) {
   function formatMessageDate(dateString: string) {
     const date = new Date(dateString);
     const now = new Date();
-
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    // Format heure : HH:MM
-    const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
+    const timeString = new Intl.DateTimeFormat("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
-    });
-    const timeString = timeFormatter.format(date);
+    }).format(date);
 
-    if (
-      date.getDate() === now.getDate() &&
-      date.getMonth() === now.getMonth() &&
-      date.getFullYear() === now.getFullYear()
-    ) {
-      return timeString; 
-    } else if (diffDays === 1) {
-      return `Hier à ${timeString}`;
-    } else if (diffDays === 2) {
-      return `Avant-hier à ${timeString}`;
-    } else if (diffDays < 7) {
-      const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
-      const dayName = dayFormatter.format(date);
-
-      const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-
-      return `${dayNameCapitalized} à ${timeString}`;
-    } else {
-      const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-      return `${fullFormatter.format(date)} à ${timeString}`;
-    }
+    if (date.toDateString() === now.toDateString()) return timeString;
+    return `${date.toLocaleDateString("fr-FR")} à ${timeString}`;
   }
 
-
-
-  // ------------------------------------------------------------
-  // Affichage
-  // ------------------------------------------------------------
   return (
-    <Flex direction="column" h="100%" w="100%">
+    <Flex direction="column" h="100%" w="100%" style={{ position: "relative" }}>
       {/* Header */}
-      <Card w="100%" p="sm" withBorder style={{
-          position: "sticky",
-          top: 75,
-          zIndex: 1000,
-        }}>
-        <Flex align="center" gap="md" >
+      <Card w="100%" p="sm" withBorder style={{ zIndex: 10 }}>
+        <Flex align="center" gap="md">
           <Avatar src={conversation.recipient.avatar_url || ""} radius="xl" />
           <Text fw={600}>{conversation.recipient.full_name || conversation.recipient.username}</Text>
+
         </Flex>
       </Card>
 
-      {/* Messages */}
+
+      {/* Messages avec viewportRef pour le scroll */}
       <ScrollArea
         style={{ flex: 1 }}
         px="sm"
         py="sm"
-        ref={scrollRef}
-        type="auto"
+        viewportRef={viewport}
       >
         <Stack gap="sm">
           {messages.map((msg) => {
             const isMe = msg.sender_id === user?.id;
             return (
-              <Flex
-                key={msg.id}
-                justify={isMe ? "flex-end" : "flex-start"}
-              >
+              <Flex key={msg.id} justify={isMe ? "flex-end" : "flex-start"}>
                 <Card
                   p="sm"
                   radius="md"
-                  bg={isMe ? "#5C7CFA" : "#F1F3F5"}
-                  style={{ maxWidth: "60%" }}
+                  bg={isMe ? "blue.6" : "gray.1"}
+                  style={{ maxWidth: "70%" }}
                 >
-                  <Text c={isMe ? "white" : "black"}>{msg.message}</Text>
-                  <Text fz="xs" c={isMe ? "white" : "#7F7F7F"} mt={2}>
+                  <Text c={isMe ? "white" : "black"} size="sm">{msg.message}</Text>
+                  <Text fz="xs" c={isMe ? "blue.1" : "dimmed"} mt={4} ta="right">
                     {formatMessageDate(msg.created_at)}
                   </Text>
                 </Card>
@@ -228,43 +261,45 @@ export default function Chat({ conversation }: ChatProps) {
         </Stack>
       </ScrollArea>
 
-      {/* Input */}
+      {/* Barre d'envoi */}
+      <Box p="sm" style={{ borderTop: "1px solid #e0e0e0", backgroundColor: "white" }}>
+        <Flex gap="sm" align="flex-end">
+          <Textarea
+            placeholder="Écrire un message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.currentTarget.value)}
+            autosize
+            minRows={4}
+            style={{ flex: 1, resize: 'vertical' }}
+            onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            }}
+          />
+          <ActionIcon 
+            variant="subtle" 
+            color="gray" 
+            size="lg" 
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          >
+            😊
+          </ActionIcon>
+          <ActionIcon 
+            color="blue" 
+            size="lg" 
+            onClick={sendMessage}
+            disabled={!newMessage.trim()}
+          >
+            <Send size={18} />
+          </ActionIcon>
+        </Flex>
+      </Box>
 
-    
-      <Flex
-        w="100%"
-        p="sm"
-        gap="sm"
-        style={{
-          position: "sticky",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          borderTop: "1px solid #e0e0e0",
-          zIndex: 1000,
-        }}
-      >
-        <Textarea
-          placeholder="Écrire un message..."
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.currentTarget.value)}
-          minRows={10}
-          style={{ flex: 1, resize: 'vertical' }}
-        />
-        <ActionIcon onClick={() => setShowEmojiPicker(v => !v)}>😊</ActionIcon>
-
-        <ActionIcon color="blue" size="lg" onClick={sendMessage}>
-          <Send size={20} />
-        </ActionIcon>
-      </Flex>
-
+      {/* Picker Emoji positionné au dessus de l'input */}
       {showEmojiPicker && (
-        <Box style={{
-          position: "absolute",
-          bottom: "60px",
-          right: "10px",
-          zIndex: 20,
-        }}>
+        <Box>
           <div
             style={{
               width: "100%",
@@ -282,7 +317,7 @@ export default function Chat({ conversation }: ChatProps) {
               style={{ position: "absolute", top: 5, right: 5 }}
               onClick={() => setShowEmojiPicker(false)}
             >
-              ✕ Fermer
+              ✕
             </Button>
 
             <Picker onEmojiClick={(emoji) => onEmojiClick(emoji)} />
@@ -291,7 +326,5 @@ export default function Chat({ conversation }: ChatProps) {
         </Box>
       )}
     </Flex>
-
-    
   );
 }

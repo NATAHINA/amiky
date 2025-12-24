@@ -33,6 +33,8 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
   const bottomRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  const [isCreating, setIsCreating] = useState(false);
+
   useEffect(() => {
     if (!convId) return;
 
@@ -91,48 +93,49 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
 
   const getOrCreateConversation = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) return null;
+    if (!user || isCreating) return convId; // Bloque si déjà en cours
 
     if (convId) return convId;
 
-    const { data: existing } = await supabase
-      .from("conversations")
-      .select("*")
-      .contains("participants", [user.id])
-      .contains("participants", [otherUserId])
-      .maybeSingle();
+    setIsCreating(true);
+    try {
+        const { data: existing } = await supabase
+          .from("conversations")
+          .select("id")
+          .contains("participants", [user.id])
+          .contains("participants", [otherUserId])
+          .maybeSingle();
 
-    if (existing) {
-      setConvId(existing.id);
-      return existing.id;
+        if (existing) {
+          setConvId(existing.id);
+          return existing.id;
+        }
+
+        const { data: newConv, error } = await supabase
+          .from("conversations")
+          .insert({ participants: [user.id, otherUserId] })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setConvId(newConv.id);
+        return newConv.id;
+    } finally {
+        setIsCreating(false);
     }
-
-    const { data: newConv, error } = await supabase
-      .from("conversations")
-      .insert({
-        participants: [user.id, otherUserId],
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Erreur création conversation :", error);
-      return null;
-    }
-
-    setConvId(newConv.id);
-    return newConv.id;
   };
 
   const sendMessage = async () => {
+    if (!text.trim() || isCreating) return;
+
     const { data: { user } } = await supabase.auth.getUser();
-    if (!text.trim()) return;
-    if (!user) return null;
+    if (!user) return;
 
     const id = await getOrCreateConversation();
+    if (!id) return;
 
-    const { data, error } = await supabase
+    const { data: messageData, error: msgError } = await supabase
       .from("messages")
       .insert({
         conversation_id: id,
@@ -142,31 +145,29 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
       .select()
       .single();
 
-      if (!error) {
-        
-        onNewMessage?.(data);
-      }
+    if (msgError) {
+      console.error("Erreur message:", msgError);
+      return;
+    }
 
+    onNewMessage?.(messageData);
     setText("");
     setShowEmojiPicker(false);
 
-
-    const postAuthor = user.id;
-
-    if (postAuthor && postAuthor !== currentUser.id) {
-
-      const { data, error } = await supabase
-      .from("notifications")
-      .insert({
-        user_id: otherUserId,
-        from_user: postAuthor,
-        type: "message",
-        post_id: postId
-      })
-      .select();
-
+    if (otherUserId && otherUserId !== user.id) {
+        await supabase
+          .from("notifications")
+          .insert({
+            user_id: otherUserId,
+            from_user: user.id,
+            type: "message",
+            conversation_id: id,
+            read: false
+          });
     }
   };
+
+  
 
   function formatMessageDate(dateString: string) {
     const date = new Date(dateString);
@@ -282,7 +283,7 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
 
         <ActionIcon onClick={() => setShowEmojiPicker(v => !v)}>😊</ActionIcon>
 
-        <Button onClick={sendMessage} size="sm">
+        <Button onClick={() => sendMessage()} size="sm">
           <SendHorizontal size={14} />
         </Button>
       </Group>

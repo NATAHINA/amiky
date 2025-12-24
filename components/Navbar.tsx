@@ -10,7 +10,8 @@ import {
   Menu,
   Avatar,
   Text,
-  useMantineTheme
+  useMantineTheme,
+  Indicator
 } from "@mantine/core";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -34,6 +35,36 @@ export default function Navbar() {
   const theme = useMantineTheme();
 
   const [currentProfile, setCurrentProfile] = useState(profile);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchMessagesCount = async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: 'exact', head: true })
+        .eq("user_id", user.id)
+        .eq("type", "message")
+        .eq("read", false);
+
+      setUnreadMessagesCount(count || 0);
+    };
+
+    fetchMessagesCount();
+
+    // Écouter les nouveaux messages en temps réel
+    const channel = supabase
+      .channel("navbar_messages")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => fetchMessagesCount()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -74,7 +105,7 @@ export default function Navbar() {
     <Box
       component="header"
       py="md"
-      style={{ position: "sticky", top: 0, zIndex: 999, backdropFilter: "blur(20px)" }}
+      style={{ position: "sticky", top: 0, zIndex: 1, backdropFilter: "blur(20px)" }}
     >
 
       <Container size="xl">
@@ -86,8 +117,11 @@ export default function Navbar() {
           
           {isDesktop && (
             <Group gap="lg" justify="center">
+              
               {navLinks.map((link, index) => {
                 const Icon = link.icon;
+                const isMessagesLink = link.label === "Messages"; // On identifie le lien message
+
                 return (
                   <Anchor
                     key={index}
@@ -105,8 +139,19 @@ export default function Navbar() {
                     onClick={(e) => handleScroll(e, link.href)}
                   >
                     <Flex align="center" gap={8}>
-                      <Icon size={18} />
-                      {link.label}
+                      {/* On ajoute l'indicateur ici */}
+                      <Indicator
+                        color="red"
+                        label={unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+                        size={16}
+                        disabled={!isMessagesLink || unreadMessagesCount === 0} // Désactivé si ce n'est pas le lien message ou si 0
+                        offset={-2}
+                      >
+                        <Icon size={18} />
+                      </Indicator>
+                      
+                      {/* On n'affiche le texte que si c'est le Desktop */}
+                      {isDesktop && link.label}
                     </Flex>
                   </Anchor>
                 );
@@ -130,28 +175,45 @@ export default function Navbar() {
             >
               <Group justify="space-between" align="center" h="100%" px="md">
                 <Group justify="center" gap="xl" style={{ flex: 1 }}>
-                  {navLinks.map((link, i) => {
+                  
+
+                  {navLinks.map((link, index) => {
                     const Icon = link.icon;
-                    const active = pathname === link.href;
+                    const isMessagesLink = link.label === "Messages"; // On identifie le lien message
+
                     return (
                       <Anchor
-                        key={i}
+                        key={index}
                         component={Link}
                         href={link.href}
                         underline="never"
+                        fw={500}
+                        fz={15}
                         style={{
-                          color: active ? "#364FC7" : "gray.5",
+                          textTransform: "uppercase",
+                          color: pathname === link.href ? theme.colors.indigo[5] : theme.colors.gray[5],
                           display: "flex",
-                          flexDirection: "column",
                           alignItems: "center",
-                          fontSize: "10px",
                         }}
+                        onClick={(e) => handleScroll(e, link.href)}
                       >
-                        <Icon size={18} />
+                        <Flex align="center" gap={8}>
+                          <Indicator
+                            color="red"
+                            label={unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+                            size={16}
+                            disabled={!isMessagesLink || unreadMessagesCount === 0} // Désactivé si ce n'est pas le lien message ou si 0
+                            offset={-2}
+                          >
+                            <Icon size={18} />
+                          </Indicator>
+                          
+                          {/* On n'affiche le texte que si c'est le Desktop */}
+                          {isDesktop && link.label}
+                        </Flex>
                       </Anchor>
                     );
                   })}
-
                   
                 </Group>
 

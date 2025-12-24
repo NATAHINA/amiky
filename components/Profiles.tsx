@@ -543,6 +543,21 @@ useEffect(() => {
       console.error(insertError);
     }
 
+    const { error: notifError } = await supabase
+    .from("notifications")
+    .insert([
+      {
+        user_id: profile.id,
+        from_user: user.id,
+        type: "accept",
+        read: false,
+      }
+    ]);
+
+    if (notifError) {
+      console.error("Erreur lors de l'envoi de la notification:", notifError);
+    }
+
     setFollowing('accepted');
     setIsReceiver(false);
   };
