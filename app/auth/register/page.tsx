@@ -94,18 +94,19 @@ export default function SignupPage() {
     <Flex
       justify="center"
       align="center"
-      style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}
+      direction="column"
       p="sm"
+      style={{ minHeight: "100vh" }}
     >
-      <Container 
-        size="xs"
-        w="100%"
-      >
+      <Container size="xs" w="100%" p={0}>
         <Paper 
           withBorder 
           shadow="md" 
-          p={{ base: 20, sm: 40 }}
+          p={{ base: 20, sm: 35 }}
           radius="md"
+          w="100%"
+          maw={450}
+          mx="auto"
         >
           <Title 
             mb={15} 
