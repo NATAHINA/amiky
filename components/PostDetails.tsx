@@ -14,7 +14,8 @@ import {
   Stack,
   Loader,
   ActionIcon,
-  Button
+  Button,
+  Box
 } from "@mantine/core";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import CommentsAlert from "@/components/CommentsAlert";
@@ -181,53 +182,130 @@ export default function SinglePostPage() {
     }
   }
 
+
+
   if (loading || !post) {
     return (
-      <Group justify="center" h="100vh">
+      <Group justify="center" h="80vh">
         <Loader size="lg" variant="dots" />
       </Group>
     );
   }
 
-
   return (
-    <Container size="md" py="xl">
-      <Card shadow="md" p="lg">
-        <Group justify="space-between">
-          <Group>
-            <Avatar src={post.profiles.avatar_url} radius="xl" />
-            <Stack gap={0}>
-              <Text fw={700} component={Link} href={`/profile/${post.author_id}`}>{post.profiles.full_name || post.profiles.username}</Text>
-              <Text size="xs" c="dimmed">@{post.profiles.username}</Text>
+    <Container 
+      size="sm"
+      py={{ base: "md", sm: "xl" }} 
+      px={{ base: "xs", sm: "sm" }}
+    >
+      <Card shadow="md" p={{ base: "md", sm: "lg" }} radius="md" withBorder>
+        
+        {/* En-tête du post */}
+        <Group justify="space-between" mb="md" wrap="nowrap">
+          <Group wrap="nowrap" style={{ flex: 1, overflow: "hidden" }}>
+            <Avatar 
+              src={post.profiles?.avatar_url} 
+              radius="xl" 
+              className="responsive-avatar"
+              style={{
+                width: 'var(--avatar-size)',
+                height: 'var(--avatar-size)',
+              }}
+            />
+            <Stack gap={0} style={{ overflow: "hidden" }}>
+              <Text 
+                fw={700} 
+                component={Link} 
+                href={`/profile/${post.author_id}`}
+                style={{ 
+                  textDecoration: "none", 
+                  whiteSpace: "nowrap", 
+                  overflow: "hidden", 
+                  textOverflow: "ellipsis" 
+                }}
+                styles={{
+                  root: {
+                    '--avatar-size': '38px',
+                    '@media (min-width: 768px)': {
+                      '--avatar-size': '56px',
+                    },
+                  } as any
+                }}
+              >
+                {post.profiles?.full_name || post.profiles?.username}
+              </Text>
+              <Text size="xs" c="dimmed" truncate>
+                @{post.profiles?.username}
+              </Text>
             </Stack>
           </Group>
-
         </Group>
 
-        {post.media_urls && <PostMediaGrid media_urls={post.media_urls} />}
+        {/* Date du post */}
+        <Text size="xs" c="dimmed" mb="sm">
+          {formatDetailsPostDate(post.created_at)}
+        </Text>
 
-        <Text size="sm" c="dimmed" mb={20}>{formatDetailsPostDate(post.created_at)}</Text>
+        {/* Contenu Média */}
+        {post.media_urls && (
+          <Box mb="md" mx={{ base: "-md", sm: 0 }}> 
+            {/* Sur mobile, le média touche les bords de la carte */}
+            <PostMediaGrid media_urls={post.media_urls} />
+          </Box>
+        )}
 
-        <div
-          dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(post.content.replace(/\n/g, "<br />")),
+        {/* Texte du post */}
+        <Box 
+          mb="xl" 
+          fz={{ base: "sm", sm: "md" }} 
+          style={{ 
+            wordBreak: "break-word", 
+            lineHeight: 1.6,
+            color: "var(--mantine-color-text)" 
           }}
-        />
+        >
+          <div
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(post.content.replace(/\n/g, "<br />")),
+            }}
+          />
+        </Box>
 
-        <Group mt="lg">
-          <ActionIcon
-            color="red"
-            variant={isLiked ? "filled" : "subtle"}
-            onClick={handleLike}
-          >
-            <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
-          </ActionIcon>
-          <Text>{post.likes_count}</Text>
+        {/* Barre d'actions */}
+        <Group 
+          pt="md" 
+          style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
+        >
+          <Group gap={6}>
+            <ActionIcon
+              color="red"
+              variant={isLiked ? "filled" : "light"}
+              onClick={handleLike}
+              size="lg"
+              radius="md"
+            >
+              <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
+            </ActionIcon>
+            <Text fw={600} size="sm">{post.likes_count}</Text>
+          </Group>
 
-          <ActionIcon onClick={() => setCommentsOpen(true)}>
-            <MessageCircle size={18} />
-          </ActionIcon>
-          <Text>{post.comments_count}</Text>
+          <Group gap={6}>
+            <ActionIcon 
+              variant="light" 
+              size="lg" 
+              radius="md" 
+              onClick={() => setCommentsOpen(true)}
+            >
+              <MessageCircle size={20} />
+            </ActionIcon>
+            <Text fw={600} size="sm">{post.comments_count}</Text>
+          </Group>
+
+          {/* Optionnel: Compteur de vues à droite */}
+          <Group gap={6} ml="auto" c="dimmed">
+            <Eye size={16} />
+            <Text size="xs">{post.views}</Text>
+          </Group>
         </Group>
 
         <CommentsAlert

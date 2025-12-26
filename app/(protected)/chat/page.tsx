@@ -4,7 +4,7 @@ import { Container } from "@mantine/core";
 
 export default function ChatPage() {
   return (
-    <Container size="xl">
+    <Container size="xl" px={{ base: "sm", md: 'md' }}>
       <FriendMessage />
     </Container>
   );

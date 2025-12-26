@@ -1,9 +1,11 @@
 
 
-import { Group, Image, Modal, ActionIcon, useMantineTheme, ScrollArea } from "@mantine/core";
+"use client";
+
+import { Group, Image, Modal, ActionIcon, useMantineTheme, ScrollArea, SimpleGrid, Box, Text } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface Props {
   media_urls: string[];
@@ -11,152 +13,168 @@ interface Props {
 
 export default function PostMediaGrid({ media_urls }: Props) {
   const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm}px)`);
-
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const [opened, setOpened] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   if (!media_urls || media_urls.length === 0) return null;
 
-  const getColumns = () => {
-    if (media_urls.length === 1) return 1;
-    if (media_urls.length === 2) return 2;
-    if (media_urls.length === 3) return 3;
-    return 2;
+  // Détermine le nombre de colonnes de la grille principale
+  const getGridCols = () => {
+    const count = media_urls.length;
+    if (count === 1) return 1;
+    if (count === 2) return 2;
+    return 3; // Pour 3 images ou plus
   };
-
-  const columns = isMobile ? 1 : getColumns();
 
   const handleOpen = (index: number) => {
     setActiveIndex(index);
     setOpened(true);
   };
 
-  const handlePrev = () => {
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setActiveIndex((prev) => (prev === 0 ? media_urls.length - 1 : prev - 1));
   };
 
-  const handleNext = () => {
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setActiveIndex((prev) => (prev === media_urls.length - 1 ? 0 : prev + 1));
   };
 
   return (
     <>
-      <Group gap="sm" mt="md" style={{ flexWrap: "nowrap", position: "relative" }}>
-        {media_urls.slice(0, 4).map((media, i) => {
-          const commonStyles: React.CSSProperties = {
-            width: `calc(${100 / columns}% - ${columns === 1 ? 0 : 4}px)`,
-            height: "100%",
-            borderRadius: 8,
-            objectFit: "cover",
-            marginBottom: 4,
-            cursor: "pointer",
-          };
-
-          return (
-            <Image key={i} src={media} alt={`media-${i}`} style={commonStyles} onClick={() => handleOpen(i)} />
-          );
-
-        })}
-
-        {media_urls.length > 4 && (
-          <div
-            style={{
-              position: "absolute",
-              right: 0,
-              bottom: 4,
-              width: `calc(${100 / columns}% - ${columns === 1 ? 0 : 4}px)`,
-              height: "100%",
-              background: "rgba(0,0,0,0.5)",
-              borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 32,
-              fontWeight: "bold",
-              color: "white",
-              cursor: "pointer",
-            }}
-            onClick={() => handleOpen(4)}
-          >
-            +{media_urls.length - 4}
-          </div>
-        )}
-      </Group>
-
-      {/* Modal type galerie Instagram */}
-      <Modal opened={opened} onClose={() => setOpened(false)} size="70%" mt="60px" centered padding={0} withCloseButton={false}>
-        <div style={{ position: "relative", textAlign: "center" }}>
-          {/* Bouton fermer */}
-          <ActionIcon
-            style={{ position: "absolute", top: 10, right: 10, zIndex: 10 }}
-            onClick={() => setOpened(false)}
-            size="lg"
-            color="gray"
-          >
-            <X size={24} />
-          </ActionIcon>
-
-          {/* Boutons navigation */}
-          <ActionIcon
-            style={{ position: "absolute", top: "50%", left: 10, zIndex: 10 }}
-            onClick={handlePrev}
-            size="lg"
-            color="gray"
-          >
-            <ArrowLeft size={32} />
-          </ActionIcon>
-
-          <ActionIcon
-            style={{ position: "absolute", top: "50%", right: 10, zIndex: 10 }}
-            onClick={handleNext}
-            size="lg"
-            color="gray"
-          >
-            <ArrowRight size={32} />
-          </ActionIcon>
-
-          {/* Média actif */}
-          {media_urls[activeIndex].endsWith(".mp4") ? (
-            <video
-              src={media_urls[activeIndex]}
-              controls
-              style={{ width: "100%", maxHeight: "70vh", borderRadius: 8 }}
-            />
-          ) : (
+      <SimpleGrid 
+        cols={isMobile ? (media_urls.length === 1 ? 1 : 2) : getGridCols()} 
+        spacing="xs" 
+        mt="md"
+      >
+        {media_urls.slice(0, 3).map((media, i) => (
+          <Box key={i} style={{ position: 'relative', aspectRatio: '1/1' }}>
             <Image
-              src={media_urls[activeIndex]}
-              alt={`media-${activeIndex}`}
-              style={{ width: "100%", maxHeight: "70vh", borderRadius: 8 }}
+              src={media}
+              alt={`media-${i}`}
+              onClick={() => handleOpen(i)}
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: theme.radius.md,
+                objectFit: "cover",
+                cursor: "pointer",
+              }}
             />
+            {/* Overlay pour le surplus d'images sur la 3ème vignette */}
+            {i === 2 && media_urls.length > 3 && (
+              <Box
+                onClick={() => handleOpen(2)}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundColor: "rgba(0,0,0,0.6)",
+                  borderRadius: theme.radius.md,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <Text c="white" fw={700} fz="xl">+{media_urls.length - 3}</Text>
+              </Box>
+            )}
+          </Box>
+        ))}
+      </SimpleGrid>
+
+      <Modal
+        opened={opened}
+        onClose={() => setOpened(false)}
+        size="100%" // Largeur adaptative
+        fullScreen={isMobile} // Plein écran sur mobile pour une meilleure immersion
+        padding={0}
+        withCloseButton={false}
+        styles={{
+          content: { backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column' },
+          body: { padding: 0, flex: 1, display: 'flex', flexDirection: 'column' }
+        }}
+      >
+        <Box style={{ position: "relative", flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 0 : '40px' }}>
+          
+          {/* Bouton Fermer */}
+          <ActionIcon
+            variant="subtle"
+            color="gray.0"
+            onClick={() => setOpened(false)}
+            style={{ position: "absolute", top: 15, right: 15, zIndex: 100 }}
+          >
+            <X size={28} />
+          </ActionIcon>
+
+          {/* Navigation */}
+          {media_urls.length > 1 && (
+            <>
+              <ActionIcon
+                variant="transparent"
+                color="gray.0"
+                onClick={handlePrev}
+                style={{ position: "absolute", left: 10, zIndex: 10 }}
+              >
+                <ChevronLeft size={48} />
+              </ActionIcon>
+
+              <ActionIcon
+                variant="transparent"
+                color="gray.0"
+                onClick={handleNext}
+                style={{ position: "absolute", right: 10, zIndex: 10 }}
+              >
+                <ChevronRight size={48} />
+              </ActionIcon>
+            </>
           )}
 
-          {/* Thumbnails en bas */}
-          <ScrollArea type="never" style={{ marginTop: 10 }}>
-            <Group gap="sm" ta="center">
-              {media_urls.map((media, i) => (
-                <div
-                  key={i}
-                  onClick={() => setActiveIndex(i)}
-                  style={{
-                    border: activeIndex === i ? "2px solid #228be6" : "2px solid transparent",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    width: 150,
-                    height: 150,
-                    cursor: "pointer",
-                  }}
-                >
-                  {media.endsWith(".mp4") ? (
-                    <video src={media} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <Image src={media} alt={`thumb-${i}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  )}
-                </div>
-              ))}
-            </Group>
-          </ScrollArea>
-        </div>
+          {/* Média Principal */}
+          <Box style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {media_urls[activeIndex].endsWith(".mp4") ? (
+              <video
+                src={media_urls[activeIndex]}
+                controls
+                style={{ maxWidth: "100%", maxHeight: "80vh" }}
+              />
+            ) : (
+              <Image
+                src={media_urls[activeIndex]}
+                alt="Active content"
+                style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: 'contain' }}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/* Thumbnails miniatures en bas */}
+        {!isMobile && media_urls.length > 1 && (
+          <Box p="md" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <ScrollArea>
+              <Group gap="xs" justify="center" wrap="nowrap">
+                {media_urls.map((media, i) => (
+                  <Image
+                    key={i}
+                    src={media}
+                    onClick={() => setActiveIndex(i)}
+                    style={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      border: activeIndex === i ? "2px solid white" : "2px solid transparent",
+                      opacity: activeIndex === i ? 1 : 0.6,
+                      objectFit: 'cover'
+                    }}
+                  />
+                ))}
+              </Group>
+            </ScrollArea>
+          </Box>
+        )}
       </Modal>
     </>
   );

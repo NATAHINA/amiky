@@ -5,7 +5,7 @@ import { Container } from "@mantine/core";
 
 export default function HomePage() {
   return (
-    <Container size="xl">
+    <Container size="xl" px={{ base: "sm", md: 'md' }}>
       <PostsList />
     </Container>
   );
