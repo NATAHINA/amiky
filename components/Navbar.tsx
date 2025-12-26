@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import {
@@ -11,31 +13,30 @@ import {
   Avatar,
   Text,
   useMantineTheme,
-  Indicator
+  Indicator,
+  rem
 } from "@mantine/core";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
-import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { usePathname, useRouter  } from "next/navigation";
+import { useMediaQuery } from "@mantine/hooks";
+import { usePathname, useRouter } from "next/navigation";
 import { smoothScrollTo } from "@/utils/smoothScroll";
-import { House, Users, MessageCircle, UsersRound, CircleUser, ChevronDown } from "lucide-react";
+import { House, Users, MessageCircle, ChevronDown, LogOut, UserCircle } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { signOut } from "@/utils/auth";
 import NotificationsMenu from "@/components/NotificationsMenu";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-
 export default function Navbar() {
- 
   const pathname = usePathname();
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const { user, profile } = useUser();
   const router = useRouter();
   const theme = useMantineTheme();
 
-  const [currentProfile, setCurrentProfile] = useState(profile);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [currentProfile, setCurrentProfile] = useState(profile);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -47,272 +48,158 @@ export default function Navbar() {
         .eq("user_id", user.id)
         .eq("type", "message")
         .eq("read", false);
-
       setUnreadMessagesCount(count || 0);
     };
 
     fetchMessagesCount();
 
-    // Écouter les nouveaux messages en temps réel
     const channel = supabase
       .channel("navbar_messages")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => fetchMessagesCount()
+      .on("postgres_changes", 
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, 
+        fetchMessagesCount
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
+  // Sync profile when it changes
   useEffect(() => {
-    if (!user?.id) return;
-
-    const fetchProfile = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (data) setCurrentProfile(data);
-    };
-
-    fetchProfile();
-  }, [user?.id, profile?.avatar_url]);
-
+    if (profile) setCurrentProfile(profile);
+  }, [profile]);
 
   const navLinks = [
     { label: "Posts", icon: House, href: "/posts" },
     { label: "Amis", icon: Users, href: "/friends" },
-    { label: "Messages", icon: MessageCircle, href: "/chat" },
+    { label: "Messages", icon: MessageCircle, href: "/chat", isMessage: true },
   ];
 
-  const handleScroll = (
-    e: React.MouseEvent<HTMLAnchorElement>,
-    href: string
-  ) => {
-    if (href.startsWith("#")) {
-      e.preventDefault();
-      smoothScrollTo(href, 600);
-    }
-  };
+  // --- Composants réutilisables ---
+  const NavItems = () => (
+    <>
+      {navLinks.map((link) => {
+        const Icon = link.icon;
+        const isActive = pathname === link.href;
+        
+        return (
+          <Anchor
+            key={link.label}
+            component={Link}
+            href={link.href}
+            underline="never"
+            style={{
+              color: isActive ? theme.colors.indigo[6] : theme.colors.gray[6],
+              transition: "color 0.2s ease",
+            }}
+          >
+            <Flex direction="column" align="center" gap={4}>
+              <Indicator
+                color="red"
+                label={unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+                size={16}
+                disabled={!link.isMessage || unreadMessagesCount === 0}
+                offset={2}
+              >
+                <Icon size={isMobile ? 24 : 20} strokeWidth={isActive ? 2.5 : 2} />
+              </Indicator>
+              {!isMobile && <Text size="xs" fw={isActive ? 700 : 500} style={{ textTransform: "uppercase" }}>{link.label}</Text>}
+            </Flex>
+          </Anchor>
+        );
+      })}
+    </>
+  );
 
-  const avatarUrl = currentProfile?.avatar_url ? `${currentProfile?.avatar_url}?v=${Date.now()}` : null;
+  const UserMenu = () => (
+    <Menu shadow="md" width={220} position="bottom-end" transitionProps={{ transition: 'pop-top-right' }}>
+      <Menu.Target>
+        <Group gap={5} style={{ cursor: "pointer" }}>
+          <Avatar 
+            src={currentProfile?.avatar_url} 
+            radius="xl" 
+            size="sm" 
+            color="indigo"
+          />
+          <ChevronDown size={14} />
+        </Group>
+      </Menu.Target>
+
+      <Menu.Dropdown>
+        <Box px="md" py="xs">
+          <Text fw={600} size="sm" truncate>{currentProfile?.full_name || currentProfile?.username}</Text>
+          <Text size="xs" c="dimmed" truncate>{user?.email}</Text>
+        </Box>
+        <Menu.Divider />
+        <Menu.Item leftSection={<UserCircle size={16} />} component={Link} href={`/profile/${user?.id}`}>
+          Mon profil
+        </Menu.Item>
+        <Menu.Item 
+          color="red" 
+          leftSection={<LogOut size={16} />} 
+          onClick={() => signOut(router)}
+        >
+          Déconnexion
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
 
   return (
-    <Box
-      component="header"
-      py="md"
-      style={{ position: "sticky", top: 0, zIndex: 1, backdropFilter: "blur(20px)" }}
-    >
+    <>
+      <Box
+        component="header"
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          backgroundColor: "rgba(255, 255, 255, 0.8)",
+          backdropFilter: "blur(12px)",
+          borderBottom: `${rem(1)} solid ${theme.colors.gray[2]}`,
+        }}
+      >
+        <Container size="xl" h={60}>
+          <Group justify="space-between" h="100%">
+            <Title order={3} fw={900} fz={22} style={{ letterSpacing: "-1px" }}>
+              A<span style={{ color: theme.colors.indigo[7] }}>MIKY</span>
+            </Title>
 
-      <Container size="xl">
-        <Group justify="space-between" align="center" w="100%">
-          <Title order={3} fw={800} fz={22} style={{ letterSpacing: "-1px" }}>
-            A<span style={{ color: "#364FC7" }}>MIKY</span>
-          </Title>
-
-          
-          {isDesktop && (
-            <Group gap="lg" justify="center">
-              
-              {navLinks.map((link, index) => {
-                const Icon = link.icon;
-                const isMessagesLink = link.label === "Messages"; // On identifie le lien message
-
-                return (
-                  <Anchor
-                    key={index}
-                    component={Link}
-                    href={link.href}
-                    underline="never"
-                    fw={500}
-                    fz={15}
-                    style={{
-                      textTransform: "uppercase",
-                      color: pathname === link.href ? theme.colors.indigo[5] : theme.colors.gray[5],
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                    onClick={(e) => handleScroll(e, link.href)}
-                  >
-                    <Flex align="center" gap={8}>
-                      {/* On ajoute l'indicateur ici */}
-                      <Indicator
-                        color="red"
-                        label={unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
-                        size={16}
-                        disabled={!isMessagesLink || unreadMessagesCount === 0} // Désactivé si ce n'est pas le lien message ou si 0
-                        offset={-2}
-                      >
-                        <Icon size={18} />
-                      </Indicator>
-                      
-                      {/* On n'affiche le texte que si c'est le Desktop */}
-                      {isDesktop && link.label}
-                    </Flex>
-                  </Anchor>
-                );
-              })}
-
-            </Group>
-          )}
-
-          
-          {!isDesktop && (
-            <Box
-              style={{
-                position: "fixed",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: "60px",
-                borderTop: "1px solid #e0e0e0",
-                zIndex: 9999,
-              }}
-            >
-              <Group justify="space-between" align="center" h="100%" px="md">
-                <Group justify="center" gap="xl" style={{ flex: 1 }}>
-                  
-
-                  {navLinks.map((link, index) => {
-                    const Icon = link.icon;
-                    const isMessagesLink = link.label === "Messages"; // On identifie le lien message
-
-                    return (
-                      <Anchor
-                        key={index}
-                        component={Link}
-                        href={link.href}
-                        underline="never"
-                        fw={500}
-                        fz={15}
-                        style={{
-                          textTransform: "uppercase",
-                          color: pathname === link.href ? theme.colors.indigo[5] : theme.colors.gray[5],
-                          display: "flex",
-                          alignItems: "center",
-                        }}
-                        onClick={(e) => handleScroll(e, link.href)}
-                      >
-                        <Flex align="center" gap={8}>
-                          <Indicator
-                            color="red"
-                            label={unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
-                            size={16}
-                            disabled={!isMessagesLink || unreadMessagesCount === 0} // Désactivé si ce n'est pas le lien message ou si 0
-                            offset={-2}
-                          >
-                            <Icon size={18} />
-                          </Indicator>
-                          
-                          {/* On n'affiche le texte que si c'est le Desktop */}
-                          {isDesktop && link.label}
-                        </Flex>
-                      </Anchor>
-                    );
-                  })}
-                  
-                </Group>
-
-                {/*<ThemeToggle />*/}
-                <Group gap="sm">
-                  <NotificationsMenu />
-                  <ThemeToggle />
-                  <Menu shadow="md" width={200} position="bottom-end">
-                    <Menu.Target>
-                      <div style={{ position: "relative", display: "inline-block", cursor: "pointer" }}>
-                        <Avatar
-                          color="#364FC7"
-                          src={avatarUrl}
-                          radius="xl"
-                          size="md"
-                        />
-                        <ChevronDown size={16} style={{
-                          position: "absolute",
-                          bottom: 0,
-                          right: -8,
-                          backgroundColor: "white",
-                          borderRadius: "50%",
-                          padding: 2,
-                        }}/>
-                      </div>
-                    </Menu.Target>
-
-                    <Menu.Dropdown mt={8}>
-                      {/* User info */}
-                      <Box px="md" py={5}>
-                        <Text fw={600}>{profile?.full_name || profile?.username}</Text>
-                        <Text size="xs" c="dimmed">{user?.email}</Text>
-                      </Box>
-
-                      <Menu.Divider />
-
-                      <Menu.Item component={Link} href={`/profile/${user?.id}`}>
-                        Mon profil
-                      </Menu.Item>
-
-                      <Menu.Item color="red" onClick={() => signOut(router)}>
-                        Déconnexion
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
-                </Group>
-                
-                
+            {/* Desktop Navigation */}
+            {!isMobile && (
+              <Group gap={30}>
+                <NavItems />
               </Group>
-            </Box>
-          )}
+            )}
 
-          {/* Desktop theme toggle + user icon */}
-          {isDesktop && (
+            {/* Actions (Always top right) */}
             <Group gap="sm">
               <NotificationsMenu />
               <ThemeToggle />
-              <Menu shadow="md" width={200} position="bottom-end">
-                <Menu.Target>
-                  <div style={{ position: "relative", display: "inline-block", cursor: "pointer" }}>
-                    <Avatar
-                      color="#364FC7"
-                      src={avatarUrl}
-                      radius="xl"
-                      size="md"
-                    />
-                    <ChevronDown size={16} style={{
-                      position: "absolute",
-                      bottom: 0,
-                      right: -8,
-                      backgroundColor: "white",
-                      borderRadius: "50%",
-                      padding: 2,
-                    }}/>
-                  </div>
-                </Menu.Target>
-
-                <Menu.Dropdown mt={8}>
-                  {/* User info */}
-                  <Box px="md" py={5}>
-                    <Text fw={600}>{profile?.full_name || profile?.username}</Text>
-                    <Text size="xs" c="dimmed">{user?.email}</Text>
-                  </Box>
-
-                  <Menu.Divider />
-
-                  <Menu.Item component={Link} href={`/profile/${user?.id}`}>
-                    Mon profil
-                  </Menu.Item>
-
-                  <Menu.Item color="red" onClick={() => signOut(router)}>
-                    Déconnexion
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+              <UserMenu />
             </Group>
-          )}
-        </Group>
-      </Container>
-    </Box>
+          </Group>
+        </Container>
+      </Box>
+
+      {isMobile && (
+        <Box
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: rem(65),
+            backgroundColor: "white",
+            borderTop: `${rem(1)} solid ${theme.colors.gray[2]}`,
+            zIndex: 1000,
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          <Group justify="space-around" align="center" h="100%" px="md">
+            <NavItems />
+          </Group>
+        </Box>
+      )}
+    </>
   );
 }
