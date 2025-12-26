@@ -93,11 +93,11 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
         .select('*, profiles(*)')
         .single();
 
-      // if (!error && data) {
-      //   setComments(comments.map(c => c.id === editingCommentId ? data : c));
-      //   setEditingCommentId(null); // Sortir du mode édition
-      //   setContent("");
-      // }
+      if (!error && data) {
+        setComments(comments.map(c => c.id === editingCommentId ? data : c));
+        setEditingCommentId(null); // Sortir du mode édition
+        setContent("");
+      }
     } else {
       // --- MODE INSERTION (votre code actuel) ---
       const { data, error } = await supabase
