@@ -48,6 +48,7 @@ export default function NotificationsMenu() {
         profiles:from_user(full_name, avatar_url, username)
       `)
       .eq("user_id", user.id)
+      .neq("type", "message")
       .order("created_at", { ascending: false });
 
     setNotifications(data || []);
