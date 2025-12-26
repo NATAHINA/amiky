@@ -1,10 +1,10 @@
+
+
 "use client";
 
-import "@mantine/core/styles.css";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
 import {
   Paper,
   PasswordInput,
@@ -12,26 +12,22 @@ import {
   Title,
   Text,
   Stack,
-  Flex,
+  Center,
   Alert,
   Anchor,
+  Container,
+  Box,
 } from "@mantine/core";
-
 import { supabase } from "@/lib/supabaseClient";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  /**
-   * Vérifie que l'utilisateur est bien en session
-   * (session temporaire créée via le lien email Supabase)
-   */
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -39,29 +35,22 @@ export default function ResetPasswordPage() {
         router.replace("/auth/login");
       }
     };
-
     checkSession();
   }, [router]);
 
   const handleResetPassword = async () => {
     setError(null);
-
     if (password.length < 6) {
       setError("Le mot de passe doit contenir au moins 6 caractères.");
       return;
     }
-
     if (password !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
       return;
     }
 
     setLoading(true);
-
-    const { error } = await supabase.auth.updateUser({
-      password,
-    });
-
+    const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
 
     if (error) {
@@ -70,66 +59,83 @@ export default function ResetPasswordPage() {
     }
 
     setSuccess(true);
-
-    setTimeout(() => {
-      router.push("/auth/login");
-    }, 2000);
+    setTimeout(() => router.push("/auth/login"), 2000);
   };
 
   return (
-    <Paper w="100vw" h="100vh" radius={0}>
-      <Flex h="100%" align="center" justify="center">
-        <Stack w="100%" maw={360} px="md">
-          <Title order={3} fw={700}>
-            Nouveau mot de passe
-          </Title>
+    // Box prend toute la hauteur pour centrer le contenu verticalement
+    <Box 
+      style={{ 
+        minHeight: "100vh", 
+        backgroundColor: "var(--mantine-color-gray-0)",
+        display: "flex",
+        alignItems: "center" 
+      }}
+    >
+      <Container size="xs" w="100%">
+        <Paper 
+          withBorder 
+          shadow="sm" 
+          p={{ base: 20, sm: 40 }} // Padding réduit sur mobile (20) et large sur desktop (40)
+          radius="md"
+        >
+          <Stack gap="lg">
+            <Stack gap={5}>
+              <Title order={2} fw={700} ta="center">
+                Nouveau mot de passe
+              </Title>
+              <Text c="dimmed" size="sm" ta="center">
+                Choisissez un nouveau mot de passe sécurisé.
+              </Text>
+            </Stack>
 
-          <Text c="dimmed" size="sm">
-            Choisissez un nouveau mot de passe pour votre compte.
-          </Text>
+            <Stack gap="md">
+              <PasswordInput
+                label="Nouveau mot de passe"
+                placeholder="********"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                required
+              />
 
-          <PasswordInput
-            label="Nouveau mot de passe"
-            placeholder="********"
-            value={password}
-            onChange={(e) => setPassword(e.currentTarget.value)}
-            required
-          />
+              <PasswordInput
+                label="Confirmer le mot de passe"
+                placeholder="********"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.currentTarget.value)}
+                required
+              />
 
-          <PasswordInput
-            label="Confirmer le mot de passe"
-            placeholder="********"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.currentTarget.value)}
-            required
-          />
+              {error && (
+                <Alert color="red" variant="light" py="xs">
+                  {error}
+                </Alert>
+              )}
 
-          {error && (
-            <Alert color="red" variant="light">
-              {error}
-            </Alert>
-          )}
+              {success && (
+                <Alert color="teal" variant="light" py="sm">
+                  Mot de passe réinitialisé. Redirection...
+                </Alert>
+              )}
 
-          {success && (
-            <Alert color="teal" variant="light">
-              Mot de passe réinitialisé avec succès.
-              Redirection en cours...
-            </Alert>
-          )}
+              <Button
+                fullWidth
+                size="md"
+                loading={loading}
+                onClick={handleResetPassword}
+              >
+                Réinitialiser
+              </Button>
+            </Stack>
 
-          <Button
-            fullWidth
-            loading={loading}
-            onClick={handleResetPassword}
-          >
-            Réinitialiser
-          </Button>
-
-          <Anchor component={Link} href="/auth/login" size="sm">
-            ← Retour à la connexion
-          </Anchor>
-        </Stack>
-      </Flex>
-    </Paper>
+            <Center>
+              <Anchor component={Link} href="/auth/login" size="sm">
+                ← Retour à la connexion
+              </Anchor>
+            </Center>
+          </Stack>
+        </Paper>
+      </Container>
+    </Box>
   );
 }

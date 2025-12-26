@@ -54,7 +54,8 @@ export default function ForgotPasswordPage() {
     <Flex
       justify="center"
       align="center"
-      style={{ minHeight: "100vh" }} // prend toute la hauteur de l'écran
+      style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}
+      p="sm"
     >
       <Paper withBorder shadow="md" p={40} mt={30} radius="md">
         <Stack w="100%" maw={360} px="md">

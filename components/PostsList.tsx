@@ -318,9 +318,10 @@ export default function PostsList() {
         direction={{ base: 'column', xs: 'row' }} 
         justify={{ base: "center", xs: "space-between" }} 
         align="center" 
-        gap="md"
+        gap="lg"
         mb="lg"
         mt="md"
+        px="sm"
       >
         <Text 
           fz={{ base: "xl", sm: "lg" }} 

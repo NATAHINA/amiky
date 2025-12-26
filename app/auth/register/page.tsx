@@ -1,9 +1,11 @@
+
+
 "use client";
 
 import '@mantine/core/styles.css';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient"; // à créer
+import { supabase } from "@/lib/supabaseClient";
 import {
   Container,
   Paper,
@@ -16,7 +18,8 @@ import {
   Flex,
   Anchor,
   Alert,
-  Box
+  Box,
+  rem // Utilitaire pour convertir les pixels en rem
 } from "@mantine/core";
 import Link from 'next/link';
 
@@ -28,8 +31,6 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-
-
 
   const handleSignup = async () => {
     setLoading(true);
@@ -60,7 +61,6 @@ export default function SignupPage() {
     }
 
     const user = data.user;
-
     if (!user) {
       setMessage("Erreur lors de la création du compte.");
       setLoading(false);
@@ -81,86 +81,113 @@ export default function SignupPage() {
 
     if (profileError) {
       setMessage("Compte créé, mais erreur lors de la création du profil.");
-      console.error(profileError);
       setLoading(false);
       return;
     }
 
     setMessage("Votre compte a été créé avec succès !");
     setLoading(false);
-
-    setTimeout(() => router.push("/auth/login"), 5000);
+    setTimeout(() => router.push("/auth/login"), 3000);
   };
-
-
 
   return (
     <Flex
       justify="center"
       align="center"
-      style={{ minHeight: "100vh" }} // prend toute la hauteur de l'écran
+      style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}
+      p="sm"
     >
-      <Container size="xl">
-        <Paper withBorder shadow="md" p={40} mt={30} w={450} radius="md">
-          <Title mb={15} ta="center" order={2} fw={800} size="xl" fz={32} style={{ letterSpacing: "-1px" }}>
-            A<span style={{ color: "#364FC7" }}>MIKY</span>
+      <Container 
+        size="xs"
+        w="100%"
+      >
+        <Paper 
+          withBorder 
+          shadow="md" 
+          p={{ base: 20, sm: 40 }}
+          radius="md"
+        >
+          <Title 
+            mb={15} 
+            ta="center" 
+            order={2} 
+            fw={800} 
+            fz={{ base: 24, sm: 32 }} 
+            style={{ letterSpacing: "-1px" }}
+          >
+            A<span style={{ color: "var(--mantine-color-indigo-7)" }}>MIKY</span>
           </Title>
-          <Text color="dimmed" size="sm" ta="center" mt={5} mb={30}>
-            Créer votre compte
+          
+          <Text c="dimmed" size="sm" ta="center" mt={5} mb={30}>
+            Créez votre compte
           </Text>
 
-          <Box p={8} component="form" onSubmit={(e) => {e.preventDefault(); handleSignup(); }} >
-            <Stack>
+          <Box component="form" onSubmit={(e) => { e.preventDefault(); handleSignup(); }} >
+            <Stack gap="md">
               <TextInput
                 label="Pseudo"
-                placeholder=""
+                placeholder="Votre pseudo"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
               <TextInput
                 label="Email"
-                placeholder=""
+                placeholder="exemple@mail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
               <PasswordInput
                 label="Mot de passe"
-                placeholder=""
+                placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
               <PasswordInput
                 label="Confirmation"
-                placeholder=""
+                placeholder="********"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
 
-              <Text color="dimmed" size="sm" ta="center" mt={5}>
-                Vous avez déjà un compte ? 
-                <Anchor component={Link} href="/auth/login" size="sm" ml={10}>
+              <Text c="dimmed" size="sm" ta="center" mt={5}>
+                Déjà un compte ?{' '}
+                <Anchor component={Link} href="/auth/login" fw={500}>
                   Connectez-vous
                 </Anchor>
               </Text>
 
-             {message && (
-              <Alert variant="filled" color={message.includes("avec succès") ? "teal" : "red"} title="">
-                {message}
-              </Alert>
-            )}
+              {message && (
+                <Alert 
+                  variant="light" 
+                  color={message.includes("succès") ? "teal" : "red"} 
+                  py="xs"
+                >
+                  {message}
+                </Alert>
+              )}
 
-
-              <Button fullWidth mt="xl" onClick={handleSignup} loading={loading}>
+              <Button 
+                fullWidth 
+                mt="md" 
+                type="submit"
+                loading={loading}
+              >
                 S'inscrire
               </Button>
 
-              <Anchor component={Link} href="/" size="sm">
-              ← Retour à la page d'accueil
-            </Anchor>
+              <Anchor 
+                component={Link} 
+                href="/" 
+                size="xs" 
+                ta="center" 
+                display="block"
+              >
+                ← Retour à l'accueil
+              </Anchor>
             </Stack>
           </Box>
         </Paper>
