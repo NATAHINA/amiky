@@ -210,7 +210,7 @@ export default function FriendMessage() {
             <>
               {/* Header du Chat Mobile pour revenir en arrière */}
               {isMobile && (
-                <Flex p="sm" align="center" style={{ borderBottom: "1px solid #e9ecef" }}>
+                <Flex p="sm" align="center" bg={colorScheme === 'dark' ? theme.colors.dark[6] : theme.white}>
                   <ActionIcon variant="subtle" onClick={() => setSelectedConv(null)} mr="sm">
                     <ChevronLeft size={24} />
                   </ActionIcon>
@@ -237,14 +237,17 @@ export default function FriendMessage() {
 }
 
 function ConversationItem({ conv, active, onClick }: { conv: Conversation, active: boolean, onClick: () => void }) {
+  const { colorScheme } = useMantineColorScheme();
+  const theme = useMantineTheme();
+
   return (
     <Card
       p="sm"
       radius="md"
       onClick={onClick}
+      bg={colorScheme === 'dark' ? theme.colors.dark[6] : theme.white}
       style={{
         cursor: "pointer",
-        backgroundColor: active ? "#f1f3f5" : "transparent",
         transition: "background 0.2s ease"
       }}
       className="conv-item"
