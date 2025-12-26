@@ -15,6 +15,9 @@ import Picker from "emoji-picker-react";
 import Link from "next/link";
 import DOMPurify from "dompurify";
 
+import { useMediaQuery } from '@mantine/hooks';
+import { useMantineTheme } from '@mantine/core';
+
 type Profile = {
   id: string;
   full_name?: string | null;
@@ -28,7 +31,8 @@ interface Post {
   content: string;
   author_id: string;
   created_at: string;
-  profiles: Profile[];
+  // profiles: Profile[];
+  profiles: Profile | null;
   likes_count: number;
   comments_count: number;
   views: number;
@@ -46,6 +50,10 @@ export default function PostsList() {
   const [newPostMedia, setNewPostMedia] = useState<File[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const modalOffset = isMobile ? 20 : 80;
+
   const router = useRouter();
 
   useEffect(() => {
@@ -61,17 +69,6 @@ export default function PostsList() {
   const handleMediaChange = (files: File[]) => {
     setNewPostMedia(files); 
   };
-
-  // const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const files = e.target.files;
-  //   if (!files) return;
-
-  //   const imageFiles = Array.from(files).filter((file) =>
-  //     file.type.startsWith("image/")
-  //   );
-
-  //   setNewPostMedia((prev) => [...prev, ...imageFiles]);
-  // };
 
   const removeMedia = (index: number) => {
     setNewPostMedia((prev) => prev.filter((_, i) => i !== index));
@@ -115,19 +112,23 @@ export default function PostsList() {
     }
 
     const formattedPosts = rawPosts?.map((p) => {
-      const authorProfile = p.profiles?.[0];
+      const authorProfile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+
       return {
-        ...p,
+        id: p.id,
+        content: p.content,
+        created_at: p.created_at,
+        author_id: p.author_id,
+        media_urls: p.media_urls,
+        profiles: authorProfile || null,
         likes_count: p.likes?.length || 0,
         comments_count: p.comments?.[0]?.count || 0,
         views: p.views?.[0]?.count || 0,
-        media_urls: p.media_urls || null,
-        isLiked: user ? p.likes?.some(like => like.user_id === user.id) : false,
+        isLiked: user ? p.likes?.some((like: any) => like.user_id === user.id) : false,
       };
     });
 
-
-    setPosts(formattedPosts || []);
+    setPosts(formattedPosts as Post[]);
     setLoading(false);
   };
 
@@ -308,100 +309,174 @@ export default function PostsList() {
     }
   }
 
-  return (
-    <Stack gap="md">
-      
-      <Flex justify="space-between" align="center">
-        <Text fz="lg" fw={600}>Posts</Text>
-        
-        <Group justify="flex-end" my="md">
-          <Button leftSection={<Plus size={14} />} onClick={() => setModalOpened(true)} size="sm" radius="xl">
-            Créer
-          </Button>
 
-        </Group>
+
+
+  return (
+    <Stack gap="sm">
+      <Flex 
+        direction={{ base: 'column', xs: 'row' }} 
+        justify={{ base: "center", xs: "space-between" }} 
+        align="center" 
+        gap="md"
+        mb="lg"
+        mt="md"
+      >
+        <Text 
+          fz={{ base: "xl", sm: "lg" }} 
+          fw={700}
+          ta={{ base: "center", xs: "left" }}
+          style={{ width: '100%' }}
+        >
+          Posts
+        </Text>
+        
+        <Button 
+          leftSection={<Plus size={18} />} 
+          onClick={() => setModalOpened(true)} 
+          size="sm" 
+          radius="xl"
+          w={{ base: '100%', xs: 'auto' }}
+          styles={{
+            root: {
+              flexShrink: 0, 
+              whiteSpace: 'nowrap',
+              minWidth: 'fit-content'
+            },
+            label: {
+              overflow: 'visible'
+            }
+          }}
+        >
+          Créer une publication
+        </Button>
       </Flex>
 
-     
       <TextInput
         placeholder="Rechercher un post ou auteur..."
         value={search}
         onChange={(e) => setSearch(e.currentTarget.value)}
+        size="md"
+        radius="lg"
       />
 
-      <Grid>
-        <Grid.Col span={{ xs: 12 }}>
-          <Grid>
-            {filteredPosts.map((p) => (
-              <Grid.Col key={p.id} span={{ xs: 12, lg: 4, md: 6, sm: 6 }}>
-                <Card shadow="sm" padding="sm" withBorder style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                  <Group justify="space-between" mb="xs">
-                    <Group gap="xs">
-                      <Avatar radius="xl" size="sm" src={p.profiles?.[0]?.avatar_url || ""} />
-                      <Stack gap={0}>
-                        <Text fw={600} component={Link} href={`/profile/${p.author_id}`} style={{ textDecoration: "none" }}>
-                          {p.profiles?.[0]?.full_name || p.profiles?.[0]?.username}
-                        </Text>
-                        <Text fz="xs" c="dimmed">{formatPostDate(p.created_at)}</Text>
-                      </Stack>
-                    </Group>
-                  </Group>
+      <SimpleGrid 
+        cols={{ base: 1, sm: 2, lg: 3 }} 
+        spacing="md" 
+        verticalSpacing="md"
+      >
+        {filteredPosts.map((p) => (
+          <Card 
+            key={p.id} 
+            shadow="sm" 
+            padding="md" 
+            withBorder 
+            style={{ 
+              height: "100%", 
+              display: "flex", 
+              flexDirection: "column",
+              overflow: 'hidden' // Sécurité pour les débordements
+            }}
+          >
+            <Group justify="space-between" mb="xs" wrap="nowrap">
+              <Group gap="xs" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                <Avatar radius="xl" size="md" src={p.profiles?.avatar_url || ""} />
+                <Stack gap={0} style={{ overflow: 'hidden' }}>
+                  <Text 
+                    fw={600} 
+                    component={Link} 
+                    href={`/profile/${p.author_id}`} 
+                    style={{ 
+                      textDecoration: "none", 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis' 
+                    }}
+                  >
+                    {p.profiles?.full_name || p.profiles?.username}
+                  </Text>
+                  <Text fz="xs" c="dimmed">{formatPostDate(p.created_at)}</Text>
+                </Stack>
+              </Group>
+            </Group>
 
-                  <div style={{ flex: 1 }}>
-                    {p.media_urls && <PostMediaGrid media_urls={p.media_urls} />}
+            <Box style={{ flex: 1 }} my="sm">
+              {p.media_urls && (
+                <Box mb="sm" mx="-md"> {/* Marges négatives pour que l'image touche les bords si désiré */}
+                   <PostMediaGrid media_urls={p.media_urls} />
+                </Box>
+              )}
 
-                      <Box className="post-content">
-                        {p.content.length > 150 ? (
-                          <div
-                            dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(
-                                p.content.substring(0, 150).replace(/\n/g, "<br />") + "..."
-                              ),
-                            }}
-                          />
-                        ) : (
-                          <div
-                            dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(p.content.replace(/\n/g, "<br />")),
-                            }}
-                          />
-                        )}
-                      </Box>
+              <Box 
+                className="post-content" 
+                fz="sm" 
+                style={{ wordBreak: 'break-word', lineHeight: 1.5 }}
+              >
+                {p.content.length > 150 ? (
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(
+                        p.content.substring(0, 150).replace(/\n/g, "<br />") + "..."
+                      ),
+                    }}
+                  />
+                ) : (
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(p.content.replace(/\n/g, "<br />")),
+                    }}
+                  />
+                )}
+              </Box>
+            </Box>
 
-                  </div>
+            <Divider my="sm" variant="dashed" />
 
-                  <Group justify="space-between" mt="sm">
-                    <Group gap="xs">
-                      <ActionIcon variant={p.isLiked ? "filled" : "light"} color="red" size="sm" onClick={() => handleLike(p.id)}>
-                        <Heart size={16} fill={p.isLiked ? "currentColor" : "transparent"} />
-                      </ActionIcon>
-                      <Text fz={12}>{p.likes_count}</Text>
+            <Group justify="space-between">
+              <Group gap="xs">
+                <ActionIcon 
+                  variant={p.isLiked ? "filled" : "light"} 
+                  color="red" 
+                  size="lg"
+                  onClick={() => handleLike(p.id)}
+                >
+                  <Heart size={18} fill={p.isLiked ? "currentColor" : "transparent"} />
+                </ActionIcon>
+                <Text fz="sm" fw={500}>{p.likes_count}</Text>
 
-                      <ActionIcon variant="light" size="sm" onClick={() => openDetails(p.id)}>
-                        <MessageCircle size={16} />
-                      </ActionIcon>
-                      <Text fz={12}>{p.comments_count}</Text>
-                    </Group>
-                    
-                  </Group>
+                <ActionIcon variant="light" size="lg" onClick={() => openDetails(p.id)}>
+                  <MessageCircle size={18} />
+                </ActionIcon>
+                <Text fz="sm" fw={500}>{p.comments_count}</Text>
+              </Group>
 
-                  <Button size="sm" variant="filled" mt="md" onClick={() => openDetails(p.id)} rightSection={<ChevronRight size={16} />}>
-                    En savoir plus
-                  </Button>
-                </Card>
-              </Grid.Col>
-            ))}
-          </Grid>
-        </Grid.Col>
-      </Grid>
+              <Button 
+                variant="subtle" 
+                size="xs" 
+                onClick={() => openDetails(p.id)} 
+                rightSection={<ChevronRight size={14} />}
+              >
+                Détails
+              </Button>
+            </Group>
+          </Card>
+        ))}
+      </SimpleGrid>
 
-      {/* Modal création post */}
+      {/* Modal responsive */}
       <Modal 
         opened={modalOpened} 
         onClose={() => setModalOpened(false)} 
-        title="Créer un post" 
+        title={<Text fw={700}>Créer un post</Text>}
         size="lg" 
-        yOffset={80}>
+        fullScreen={false}
+        styles={{
+          body: {
+            padding: 'var(--mantine-spacing-md)',
+          },
+        }}
+        yOffset={modalOffset}
+      >
         <Stack gap="md">
           <div style={{ position: 'relative' }}>
             <Textarea
@@ -483,10 +558,12 @@ export default function PostsList() {
             })}
           </Group>
         )}
-
-          <Button onClick={handleCreatePost}>Publier</Button>
+          <Button size="md" fullWidth onClick={handleCreatePost}>
+            Publier
+          </Button>
         </Stack>
       </Modal>
     </Stack>
   );
+
 }

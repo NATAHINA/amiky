@@ -70,7 +70,7 @@ export default function Navbar() {
   }, [profile]);
 
   const navLinks = [
-    { label: "Posts", icon: House, href: "/posts" },
+    { label: "Publications", icon: House, href: "/posts" },
     { label: "Amis", icon: Users, href: "/friends" },
     { label: "Messages", icon: MessageCircle, href: "/chat", isMessage: true },
   ];
@@ -153,9 +153,11 @@ export default function Navbar() {
           position: "sticky",
           top: 0,
           zIndex: 100,
-          backgroundColor: "rgba(255, 255, 255, 0.8)",
+          backgroundColor: "var(--mantine-color-body)", 
+          opacity: 0.98,
           backdropFilter: "blur(12px)",
-          borderBottom: `${rem(1)} solid ${theme.colors.gray[2]}`,
+          borderBottom: `${rem(1)} solid var(--mantine-color-default-border)`,
+          boxShadow: "var(--mantine-shadow-xs)",
         }}
       >
         <Container size="xl" h={60}>
@@ -188,7 +190,7 @@ export default function Navbar() {
             bottom: 0,
             left: 0,
             right: 0,
-            height: rem(65),
+            height: rem(50),
             backgroundColor: "white",
             borderTop: `${rem(1)} solid ${theme.colors.gray[2]}`,
             zIndex: 1000,
