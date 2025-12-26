@@ -110,21 +110,34 @@ export default function Home() {
 
   return (
     <main>
+
       <Container size="xl">
-        <Flex justify="space-between" align="center" h="100%" w="100%" p="md">
-          <Title order={2} fw={800} size="xl" fz={32} style={{ letterSpacing: "-1px" }}>
+        <Flex 
+          justify="space-between" 
+          align="center" 
+          p={{ base: 'sm', sm: 'md' }} // Padding réduit sur mobile
+        >
+          <Title 
+            order={2} 
+            fw={800} 
+            fz={{ base: 24, sm: 32 }} // Taille de police adaptative
+            style={{ letterSpacing: "-1px" }}
+          >
             A<span style={{ color: "#364FC7" }}>MIKY</span>
           </Title>
           
-          <Group align="center" gap="sm">
+          <Flex 
+            gap={{ base: 'xs', sm: 'sm' }} 
+            align="center"
+          >
             <ThemeToggle />
-            <Button size="sm" variant="filled" onClick={() => router.push('/auth/login')}>
+            <Button size="xs" variant="filled" onClick={() => router.push('/auth/login')}>
               Login
             </Button>
-            <Button size="sm" variant="outline" onClick={() => router.push('/auth/register')}>
+            <Button size="xs" variant="outline" onClick={() => router.push('/auth/register')}>
               Signup
             </Button>
-          </Group>
+          </Flex>
         </Flex>
       </Container>
 
@@ -134,23 +147,42 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <Container fluid style={{ 
-          backgroundImage: 'url(/fond.avif)',
-          backgroundSize: "cover",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center"}} c="white" pt={{base: 180, md: 250}} pl={{base: 30}} pb={{base: 180, md: 250}} pr={{base: 30}}>
+        
+        <Container 
+          fluid 
+          style={{ 
+            backgroundImage: 'url(/fond.avif)',
+            backgroundSize: "cover",
+            backgroundPosition: "center"
+          }} 
+          c="white" 
+          py={{ base: 80, md: 150 }} // Padding vertical équilibré
+          px={{ base: 20, md: 50 }}
+        >
           <Stack align="center" gap="md">
-            <Title order={2} style={{ fontSize: '3rem', textAlign: 'center' }}>
-              Partagez, <span style={{ color: "#caaaf1" }}>échangez,</span><span style={{ color: "#bdc2de" }}> connectez-vous</span>
+            <Title 
+              order={1} 
+              style={{ 
+                fontSize: mobile ? '2.2rem' : '3.5rem', // Utilisation du hook mobile
+                textAlign: 'center',
+                lineHeight: 1.2 
+              }}
+            >
+              Partagez, <span style={{ color: "#caaaf1" }}>échangez,</span>
+              <br style={{ display: mobile ? 'none' : 'block' }} /> 
+              <span style={{ color: "#bdc2de" }}> connectez-vous</span>
             </Title>
-            <Text size="lg" style={{ maxWidth: 600, textAlign: 'center' }}>
-              Retrouvez vos amis, créez de nouvelles connexions et partagez vos passions dans une plateforme sociale moderne et intuitive.
+            <Text 
+              size="lg" 
+              fz={{ base: 'md', sm: 'xl' }} 
+              style={{ maxWidth: 800, textAlign: 'center' }}
+            >
+              Retrouvez vos amis et partagez vos passions dans une plateforme moderne.
             </Text>
             <Button 
-              size="md" 
-              radius="sm"
-              variant="filled"
-              mt="md"
+              size="lg" // Plus gros sur mobile pour faciliter le clic
+              fullWidth={mobile} // Bouton large sur mobile
+              radius="md"
               onClick={() => router.push('/auth/login')}
             >
               Commencer maintenant
@@ -182,16 +214,23 @@ export default function Home() {
 Grâce à ma maîtrise des technologies modernes, je conçois et développe des applications rapides, sécurisées et parfaitement intégrées, capables de s’adapter à tout type de projet ou d’environnement professionnel.
           </Text>
           
-          <SimpleGrid cols={{ base: 1, md: 3, sm: 2 }} spacing="xl" mt={50}>
+          
+          <SimpleGrid 
+            cols={{ base: 1, sm: 2, md: 3 }} 
+            spacing={{ base: 'md', md: 'xl' }} 
+            verticalSpacing={{ base: 'md', md: 'xl' }}
+            mt={50}
+          >
             {skillsData.map((item, i) => (
-            <Card key={i} shadow="sm" padding="sm" radius="md" withBorder>
-              {item.icon}
-              <Text fw={700} mt={20} fz="lg">{item.category}</Text>
-              
-              <Text lh={1.6} c="dimmed">
-                {item.description}
-              </Text>
-            </Card>
+              <Card key={i} shadow="sm" padding="lg" radius="md" withBorder>
+                <ThemeIcon variant="light" size={48} color={item.color} radius="md">
+                  {item.icon}
+                </ThemeIcon>
+                <Text fw={700} mt="md" fz="lg">{item.category}</Text>
+                <Text lh={1.6} c="dimmed" fz="sm" mt="xs">
+                  {item.description}
+                </Text>
+              </Card>
             ))}
           </SimpleGrid>
 
