@@ -115,7 +115,7 @@ export default function Home() {
         <Flex 
           justify="space-between" 
           align="center" 
-          p={{ base: 'sm', sm: 'md' }} // Padding réduit sur mobile
+          p={{ base: 'sm', sm: 'md' }}
         >
           <Title 
             order={2} 
@@ -163,7 +163,7 @@ export default function Home() {
             <Title 
               order={1} 
               style={{ 
-                fontSize: mobile ? '2.2rem' : '3.5rem', // Utilisation du hook mobile
+                fontSize: mobile ? '2.2rem' : '3.5rem',
                 textAlign: 'center',
                 lineHeight: 1.2 
               }}
@@ -180,8 +180,7 @@ export default function Home() {
               Retrouvez vos amis et partagez vos passions dans une plateforme moderne.
             </Text>
             <Button 
-              size="lg" // Plus gros sur mobile pour faciliter le clic
-              fullWidth={mobile} // Bouton large sur mobile
+              size="sm"
               radius="md"
               onClick={() => router.push('/auth/login')}
             >
