@@ -122,13 +122,7 @@ export default function LoginPage() {
             <Button 
                 fullWidth 
                 mt="md" 
-                // onClick={handleLogin} 
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleLogin();
-                  }
-                }}
+                onClick={handleLogin} 
                 loading={loading}
                 size="md"
             >
