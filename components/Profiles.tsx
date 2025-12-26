@@ -7,12 +7,13 @@ import PrivateChat from "./PrivateChat";
 import {
   Card, Avatar, Text, Button, Stack, Grid, Loader,
   Center, Tabs, Image, SimpleGrid, Box, Group, ActionIcon, FileInput, Modal, Paper,
-  Flex, TextInput, Textarea, Alert, PasswordInput, Divider, Menu
+  Flex, TextInput, Textarea, Alert, PasswordInput, Divider, Menu, Badge
 } from '@mantine/core';
 import PostMediaGrid from "@components/PostMediaGrid";
-import { Heart, MessageCircle, UserPlus, UserMinus, Camera, X, Check, Hourglass, UserRoundMinus, EllipsisVertical } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, UserMinus, Camera, X, Check, Hourglass, UserRoundMinus, EllipsisVertical, Images, Users, Pencil } from "lucide-react";
 import DOMPurify from "dompurify";
 import Picker from "emoji-picker-react";
+import { useMediaQuery } from "@mantine/hooks";
 
 
 interface Post {
@@ -100,6 +101,8 @@ export default function ProfilesPage() {
 
   const [friendsList, setFriendsList] = useState<Profile[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
+
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   useEffect(() => {
     if (!userId || !currentUserId) return;
@@ -837,7 +840,7 @@ useEffect(() => {
   if (loading) {
     return (
       <Center style={{ height: '100vh' }}>
-        <Loader variant="dots" />
+        <Loader variant="dots" size="sm"/>
       </Center>
     );
   }
@@ -999,230 +1002,159 @@ useEffect(() => {
       </Modal>
 
 
-      {/* Profil Info */}
       <Card withBorder radius="md" p="lg" mt={70}>
-        <Grid align="center">
-          <Grid.Col span={8}>
-
-            <Group justify="space-between" align="center" gap="xs">
-            <Text fw={700} fz="xl">{profile.full_name || profile.username}</Text>
+        <Flex 
+          direction={{ base: 'column', sm: 'row' }} 
+          justify="space-between" 
+          align={{ base: 'flex-start', sm: 'center' }} 
+          gap="md"
+        >
+          <Box style={{ flex: 1 }}>
+            <Group justify="space-between" wrap="nowrap">
+              <Box>
+                <Text fw={700} fz="xl" style={{ lineHeight: 1.2, width: "100%" }}>
+                  {profile.full_name || profile.username}
+                </Text>
+                <Text c="dimmed" size="sm">@{profile.username}</Text>
+              </Box>
+              
+              {/* Statut en ligne visible uniquement pour les autres */}
+              {!isOwner && (
+                <Badge color={isOnline(profile) ? "green" : "gray"} variant="dot">
+                  {isOnline(profile) ? "En ligne" : timeAgo(profile.last_active)}
+                </Badge>
+              )}
+            </Group>
             
-            {isOwner && (
-              <Group gap="xs">
-                <Button variant="outline" size="xs" onClick={openEditProfile}>
-                  Modifier le profil
-                </Button>
+            {profile.bio && (
+              <Text mt="sm" size="sm" style={{ maxWidth: '100%' }}>
+                {profile.bio}
+              </Text>
+            )}
+          </Box>
 
-                <Button 
-                  variant="outline" 
-                  color="gray" 
-                  size="xs"
-                  onClick={() => {
-                    setEditPasswordModal(true);
-                    setErrorAlert(null);
-                    setSuccessAlert(null);
-                  }}
-                >
-                  Mot de passe
+
+          <Group gap="xs" style={{ width: isMobile ? '100%' : 'auto' }} wrap="nowrap">
+            {isOwner ? (
+              <>
+                <Button variant="outline" size="sm" flex={{ base: 1, sm: 'initial' }} miw={{ base: 100, xs: 'auto' }} onClick={openEditProfile}>
+                  Modifier
                 </Button>
+                <ActionIcon variant="light" size="lg" onClick={() => setEditPasswordModal(true)} style={{ flexShrink: 0 }}>
+                   <EllipsisVertical size={18} />
+                </ActionIcon>
+              </>
+            ) : (
+              <Group gap="xs" flex={{ base: 1, sm: 'initial' }} justify="flex-end" wrap="nowrap">
+                 <Button 
+                   leftSection={<MessageCircle size={16}/>} 
+                   onClick={() => openChatWithUser(profile)}
+                   variant="filled"
+                   flex={{ base: 1, sm: 'initial' }}
+                 >
+                   Message
+                 </Button>
               </Group>
             )}
           </Group>
-            <Text c="dimmed">@{profile.username}</Text>
-            {profile.bio && <Text mt="sm">{profile.bio}</Text>}
-
-          </Grid.Col>
-          <Grid.Col span={4} ta="end">
-           
-            {currentUserId && currentUserId !== profile.id && (
-              <>
-                {following === 'none' && (
-                  <ActionIcon
-                    size="md"
-                    variant="filled"
-                    onClick={handleFollow}
-                  >
-                    <UserPlus size={16} />
-                  </ActionIcon>
-                )}
-
-                {following === 'pending' && !isReceiver && (
-                <Group justify="flex-end">
-                  <ActionIcon
-                    size="md"
-                    color="gray"
-                    radius="lg"
-                    disabled
-                  >
-                    <Hourglass size={16}/>
-                  </ActionIcon>
-                  <ActionIcon
-                    size="md"
-                    color="red"
-                    variant="outline"
-                    radius="lg"
-                    onClick={handleDeleteFollowRequest}
-                  >
-                    <UserRoundMinus size={16}/>
-                  </ActionIcon>
-                </Group>
-              )}
-
-              {following === 'pending' && isReceiver && (
-                <Group justify="flex-end">
-                  <ActionIcon
-                    size="md"
-                    variant="filled"
-                    radius="lg"
-                    onClick={handleConfirmFollow}
-                  >
-                    <Check size={16}/>
-                  </ActionIcon>
-                  <ActionIcon
-                    size="md"
-                    color="red"
-                    variant="outline"
-                    radius="lg"
-                    onClick={handleDeleteFollowRequest}
-                  >
-                    <UserMinus size={16}/>
-                  </ActionIcon>
-                </Group>
-              )}
-
-                {following === 'accepted' && (
-                  <Group justify="flex-end">
-                    <ActionIcon
-                      size="md"
-                      variant="filled"
-                      radius="lg"
-                      onClick={(e) => {
-                        openChatWithUser(profile);
-                        e.stopPropagation();
-                      }}
-                     >
-                      <MessageCircle size={16}/>
-                    </ActionIcon>
-
-                    <ActionIcon
-                      size="md"
-                      color="red"
-                      radius="lg"
-                      variant="outline"
-                      onClick={(e) => {
-                        setConfirmDeleteAllModal(true);
-                        e.stopPropagation();
-                      }}
-                    >
-                      <UserMinus size={16}/>
-                    </ActionIcon>
-                  </Group>
-                )}
-              </>
-            )}
-
-
-
-          </Grid.Col>
-        </Grid>
+        </Flex>
       </Card>
 
-      {/* Tabs : Posts / Galerie */}
-      <Tabs defaultValue="posts">
-        <Tabs.List>
-          <Tabs.Tab value="posts">POSTS</Tabs.Tab>
-          <Tabs.Tab value="gallery">GALERIE</Tabs.Tab>
-          <Tabs.Tab value="amis">AMIS</Tabs.Tab>
+      <Tabs defaultValue="posts" color="blue" variant="pills" radius="xl" mt="xl" mb="xl">
+        <Tabs.List justify="center">
+          <Tabs.Tab value="posts" leftSection={<MessageCircle size={16} />}>Publications</Tabs.Tab>
+          <Tabs.Tab value="gallery" leftSection={<Images size={16} />}>GALERIE</Tabs.Tab>
+          <Tabs.Tab 
+            value="friends" 
+            leftSection={<Users size={16} />}
+          >
+            Amis ({friendsList.length})
+          </Tabs.Tab>
         </Tabs.List>
 
-        {/* Posts */}
-        <Tabs.Panel value="posts" pt="md">
-          <Stack gap="md">
-            {posts.length === 0 ? (
-              <Text ta="center" c="dimmed">Aucun post pour le moment.</Text>
-            ) : (
-              posts.map((post) => (
-                <Card key={post.id} shadow="sm" padding="sm" withBorder style={{ display: "flex", flexDirection: "column" }}>
-                  <Group justify="flex-end" px="xs" py="xs">
-                    {isOwner && (
-                      <Menu shadow="md" width={200} position="bottom-end">
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" color="gray">
-                            <EllipsisVertical size={20} />
-                          </ActionIcon>
-                        </Menu.Target>
+        <Tabs.Panel value="posts" pt="xl">
+          {/* Votre logique actuelle de posts */}
+          <Stack gap="xl">
+              {posts.map((post) => (
+                 <Card key={post.id} withBorder radius="md" p="md">
+                   <Group justify="flex-end" px="xs" py="xs">
+                      {isOwner && (
+                        <Menu shadow="md" width={200} position="bottom-end">
+                          <Menu.Target>
+                            <ActionIcon variant="subtle" color="gray">
+                              <EllipsisVertical size={20} />
+                            </ActionIcon>
+                          </Menu.Target>
 
-                        <Menu.Dropdown>
-                          <Menu.Item 
-                            onClick={() => {
-                              setPostToEdit(post);
-                              setExistingMedia(post.media_urls || []);
-                              setNewFiles([]);
-                              setEditPostModal(true);
-                            }}
-                          >
-                            Modifier le post
-                          </Menu.Item>
-                          <Menu.Item 
-                            color="red" 
-                            onClick={() => {
-                              setPostToDelete(post.id);
-                              setDeletePostModal(true);
-                            }}
-                          >
-                            Supprimer le post
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    )}
-                  </Group>
-
-                  {post.media_urls && <PostMediaGrid media_urls={post.media_urls} />}
-
-                
-                    <div className="">
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: expandedPosts[post.id]
-                            ? DOMPurify.sanitize(post.content.replace(/\n/g, "<br />"))
-                            : getTruncatedHtml(post.content, 150),
-                        }}
-                      />
-                      {post.content.length > 150 && (
-                        <Button
-                          variant="light"
-                          size="xs"
-                          onClick={() => togglePost(post.id)}
-                          style={{ marginTop: 4 }}
-                        >
-                          {expandedPosts[post.id] ? "< Voir moins" : "Voir plus >"}
-                        </Button>
+                          <Menu.Dropdown>
+                            <Menu.Item 
+                              onClick={() => {
+                                setPostToEdit(post);
+                                setExistingMedia(post.media_urls || []);
+                                setNewFiles([]);
+                                setEditPostModal(true);
+                              }}
+                            >
+                              Modifier le post
+                            </Menu.Item>
+                            <Menu.Item 
+                              color="red" 
+                              onClick={() => {
+                                setPostToDelete(post.id);
+                                setDeletePostModal(true);
+                              }}
+                            >
+                              Supprimer le post
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
                       )}
-                    </div>
-
-
-                  <Group justify="space-between" mt="sm">
-                    <Group gap="xs">
-                      <ActionIcon variant={post.isLiked ? "filled" : "light"} color="red" size="sm" onClick={() => handleLike(post.id)}>
-                        <Heart size={16} fill={post.isLiked ? "currentColor" : "transparent"} />
-                      </ActionIcon>
-                      <Text fz={12}>{post.likes_count}</Text>
-
-                      <ActionIcon variant="light" size="sm" onClick={() => openDetails(post.id)}>
-                        <MessageCircle size={16} />
-                      </ActionIcon>
-                      <Text fz={12}>{post.comments_count}</Text>
                     </Group>
-                    <Text fz="xs" c="dimmed">{formatPostsDate(post.created_at)}</Text>
-                  </Group>
-                </Card>
-              ))
-            )}
+
+                    {post.media_urls && <PostMediaGrid media_urls={post.media_urls} />}
+
+                  
+                      <div className="">
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: expandedPosts[post.id]
+                              ? DOMPurify.sanitize(post.content.replace(/\n/g, "<br />"))
+                              : getTruncatedHtml(post.content, 150),
+                          }}
+                        />
+                        {post.content.length > 150 && (
+                          <Button
+                            variant="light"
+                            size="xs"
+                            onClick={() => togglePost(post.id)}
+                            style={{ marginTop: 4 }}
+                          >
+                            {expandedPosts[post.id] ? "< Voir moins" : "Voir plus >"}
+                          </Button>
+                        )}
+                      </div>
+
+
+                    <Group justify="space-between" mt="sm">
+                      <Group gap="xs">
+                        <ActionIcon variant={post.isLiked ? "filled" : "light"} color="red" size="sm" onClick={() => handleLike(post.id)}>
+                          <Heart size={16} fill={post.isLiked ? "currentColor" : "transparent"} />
+                        </ActionIcon>
+                        <Text fz={12}>{post.likes_count}</Text>
+
+                        <ActionIcon variant="light" size="sm" onClick={() => openDetails(post.id)}>
+                          <MessageCircle size={16} />
+                        </ActionIcon>
+                        <Text fz={12}>{post.comments_count}</Text>
+                      </Group>
+                      <Text fz="xs" c="dimmed">{formatPostsDate(post.created_at)}</Text>
+                    </Group>
+                 </Card>
+              ))}
           </Stack>
         </Tabs.Panel>
 
-        {/* Galerie */}
-        <Tabs.Panel value="gallery" pt="md">
+        <Tabs.Panel value="gallery" pt="xl">
           {posts.filter((p) => p.media_urls?.length > 0).length === 0 ? (
             <Text ta="center" c="dimmed">Pas de médias pour le moment.</Text>
           ) : (
@@ -1237,7 +1169,7 @@ useEffect(() => {
                       alt={`Media ${i}`}
                       radius="sm"
                       fit="cover"
-                      style={{ height: 300, cursor: 'pointer' }} // Ajout du curseur pointer
+                      style={{ height: 300, cursor: 'pointer' }} 
                       loading="lazy"
                       onClick={() => {
                         setSelectedImage(url);
@@ -1247,7 +1179,6 @@ useEffect(() => {
                   ))}
               </SimpleGrid>
 
-              {/* Visionneur d'image (Modal) */}
               <Modal
                 opened={opened}
                 onClose={() => setOpened(false)}
@@ -1267,67 +1198,71 @@ useEffect(() => {
           )}
         </Tabs.Panel>
 
-        <Tabs.Panel value="amis" pt="md">
-        {loadingFriends ? (
-          <Center py="xl"><Loader size="sm" /></Center>
-        ) : friendsList.length > 0 ? (
-          <Stack gap="md">
-            <Text fz="sm" fw={500} c="dimmed">
-              {friendsList.length} ami(s) au total
-            </Text>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        <Tabs.Panel value="friends" pt="xl">
+          {loadingFriends ? (
+            <Center py="xl"><Loader variant="dots" /></Center>
+          ) : friendsList.length > 0 ? (
+            <SimpleGrid 
+              cols={{ base: 2, sm: 3, md: 3 }} 
+              spacing="md"
+            >
               {friendsList.map((friend) => (
                 <Paper 
                   key={friend.id} 
                   withBorder 
                   p="sm" 
-                  radius="md"
-                  onClick={() => router.push(`/profile/${friend.id}`)}
-                  style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                  radius="md" 
+                  style={{ 
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease',
+                  }}
+                  onClick={() => router.push(`/profiles/${friend.id}`)}
+                  className="friend-card"
                 >
-                  <Group justify="space-between" wrap="nowrap">
-                    <Group wrap="nowrap">
-                      <Box style={{ position: 'relative' }}>
-                        <Avatar src={friend.avatar_url} radius="xl" size="lg" />
-                        {isOnline(friend) && (
-                          <Box
-                            style={{
-                              position: 'absolute',
-                              bottom: 2,
-                              right: 2,
-                              width: 12,
-                              height: 12,
-                              backgroundColor: '#40C057',
-                              border: '2px solid white',
-                              borderRadius: '50%',
-                              zIndex: 1
-                            }}
-                          />
-                        )}
-                      </Box>
-                      <Box style={{ overflow: 'hidden' }}>
-                        <Text fz="sm" fw={600}>
-                          {friend.full_name || friend.username}
-                        </Text>
-                        <Text fz="xs" c="dimmed">
-                          @{friend.username}
-                        </Text>
-                      </Box>
-                    </Group>
-
-                  </Group>
+                  <Stack align="center" gap="xs">
+                    <Box style={{ position: 'relative' }}>
+                      <Avatar src={friend.avatar_url} size="lg" radius="xl" />
+                      {isOnline(friend) && (
+                        <Box
+                          style={{
+                            position: 'absolute',
+                            bottom: 5,
+                            right: 5,
+                            width: 12,
+                            height: 12,
+                            backgroundColor: '#40C057',
+                            borderRadius: '50%',
+                            border: '2px solid white'
+                          }}
+                        />
+                      )}
+                    </Box>
+                    <Box ta="center">
+                      <Text fw={600} fz="sm" truncate>{friend.full_name || friend.username}</Text>
+                      <Text fz="xs" c="dimmed">@{friend.username}</Text>
+                    </Box>
+                    <Button 
+                      variant="light" 
+                      size="compact-xs" 
+                      fullWidth 
+                      onClick={(e) => {
+                         e.stopPropagation();
+                         openChatWithUser(friend);
+                      }}
+                    >
+                      Message
+                    </Button>
+                  </Stack>
                 </Paper>
               ))}
-
             </SimpleGrid>
-          </Stack>
-        ) : (
-          <Paper withBorder p="xl" radius="md" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-            <Text c="dimmed">Cet utilisateur n'a pas encore d'amis.</Text>
-          </Paper>
-        )}
-      </Tabs.Panel>
+          ) : (
+            <Center py="xl" style={{ flexDirection: 'column' }}>
+              <UserRoundMinus size={48} color="#dee2e6" />
+              <Text c="dimmed" mt="sm">Aucun ami pour le moment</Text>
+            </Center>
+          )}
+        </Tabs.Panel>
       </Tabs>
 
         {openedChat && currentChatUser && (
@@ -1519,7 +1454,7 @@ useEffect(() => {
               {/* Affichage des images EXISTANTES (URLs) */}
               {existingMedia.length > 0 && (
                 <>
-                  <Text size="xs" fw={500} c="dimmed">Images actuelles</Text>
+                  <Text fz="xs" fw={500} c="dimmed">Images actuelles</Text>
                   <Group gap="sm">
                     {existingMedia.map((url, index) => (
                       <div key={index} style={{ position: 'relative' }}>

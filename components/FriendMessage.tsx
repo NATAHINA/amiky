@@ -158,12 +158,10 @@ export default function FriendMessage() {
             borderRight: `1px solid ${borderColor}`, 
             display: "flex", 
             flexDirection: "column",
-            position: "sticky",
-            top: 75,
-            zIndex: 1000 
+            height: "100%", 
           }}
         >
-          <Box p="md" style={{ borderBottom: "1px solid #e9ecef" }}>
+          <Box p="md" style={{ borderBottom: `1px solid ${borderColor}`, flexShrink: 0 }}>
             <Title order={4} mb="sm">Messages</Title>
             <TextInput
               placeholder="Rechercher..."
@@ -174,18 +172,24 @@ export default function FriendMessage() {
             />
           </Box>
 
-          <Box style={{ flex: 1, overflowY: "auto" }} p="xs">
+          <Box 
+            style={{ 
+              flex: 1, 
+              overflowY: "auto", 
+              scrollbarWidth: "thin",
+            }} 
+            p="xs"
+          >
             {loading ? (
               <Flex justify="center" mt="xl"><Loader size="sm" /></Flex>
             ) : filteredConversations.length > 0 ? (
               <Stack gap={4}>
                 {filteredConversations.map((conv) => (
-
                   <ConversationItem 
                     key={conv.id} 
                     conv={conv} 
                     active={selectedConv?.id === conv.id}
-                    onClick={() => handleSelectConversation(conv)} // Utiliser la nouvelle fonction ici
+                    onClick={() => handleSelectConversation(conv)}
                   />
                 ))}
               </Stack>
@@ -199,6 +203,7 @@ export default function FriendMessage() {
         </Box>
       )}
 
+     
       {/* ZONE DE CHAT */}
       {showChat && (
         <Flex 
