@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
-  Text, Group, Avatar, Textarea, Button, Stack, Divider, ActionIcon, Paper
+  Text, Group, Avatar, Textarea, Button, Stack, Divider, ActionIcon, Paper, Box
 } from "@mantine/core";
 import Picker from "emoji-picker-react";
 import Link from "next/link";
+import { Send } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -163,30 +164,28 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
 
 
   return (
-    <Stack gap="sm">
-      {/* Liste des commentaires uniques */}
-      {[...new Map(comments.map((c) => [c.id, c])).values()].map((c, index) => (
-        <Stack key={c.id || index} gap={4} id={`comment-${c.id}`}>
-          <Group align="flex-start">
-            <Avatar src={c.profiles?.avatar_url || ""} radius="xl" size="sm" />
-            <Stack gap={0}>
-              <Text fw={600} component={Link} href={`/profile/${c.profiles?.id}`}>
-                {c.profiles?.full_name || c.profiles?.username}
-              </Text>
-              <Text size="xs" color="dimmed">
-                {formatCommentsDate(c.created_at)}
-              </Text>
-            </Stack>
-          </Group>
-          <Text>{c.content}</Text>
-          <Divider />
-        </Stack>
-      ))}
+    <Stack gap={0}>
+      <Box mb="md">
+        {[...new Map(comments.map((c) => [c.id, c])).values()].map((c, index) => (
+          <Box key={c.id || index} id={`comment-${c.id}`} py={8} style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+            <Group align="flex-start">
+              <Avatar src={c.profiles?.avatar_url || ""} radius="xl" size="sm" />
+              <Stack gap={0}>
+                <Text fw={600} component={Link} href={`/profile/${c.profiles?.id}`}>
+                  {c.profiles?.full_name || c.profiles?.username}
+                </Text>
+                <Text size="xs" color="dimmed">
+                  {formatCommentsDate(c.created_at)}
+                </Text>
+              </Stack>
+            </Group>
+            <Text>{c.content}</Text>
+          </Box>
+        ))}
+      </Box>
 
-      {/* Formulaire de commentaire */}
-      {/*<Group align="flex-end" gap="xs">*/}
-      <Stack gap="md">
-          <div style={{ position: 'relative' }}>
+      <Stack gap={4} mt="sm">
+        <Box style={{ position: 'relative' }}>
           <Textarea
             placeholder="Écrire un commentaire..."
             value={content}
@@ -203,7 +202,7 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
               😊
             </ActionIcon>
           </Group>
-        </div>
+        </Box>
 
         {showEmojiPicker && (
             <Paper withBorder shadow="md" p="xs" radius="md" style={{ zIndex: 10 }}>
@@ -227,7 +226,15 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
           )}
       </Stack>
 
-      <Button onClick={sendComment}>Envoyer</Button>
+      <Button 
+          onClick={sendComment} 
+          fullWidth 
+          size="sm" 
+          radius="md"
+          leftSection={<Send size={16} />}
+        >
+          Envoyer
+        </Button>
     </Stack>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, CloseButton, Stack, Text } from "@mantine/core";
+import { CloseButton, Stack, Text } from "@mantine/core";
 import { supabase } from "@/lib/supabaseClient";
 import CommentsList from "./CommentsList";
 
@@ -42,24 +42,17 @@ export default function CommentsAlert({ onClose, postId, onCommentAdded }: Props
   }, [postId]);
 
   return (
-    <Alert
-      title="Commentaires"
-      variant="transparent"
-      icon={<></>}
-      mb="md"
-      mt="lg"
-    >
-      <Stack gap="sm">
-        <Text>Voici les commentaires du post :</Text>
-        
-        <CommentsList
-          postId={postId}
-          comments={comments}
-          setComments={setComments}
-          onCommentAdded={onCommentAdded}
-        />
 
-      </Stack>
-    </Alert>
+    <Stack gap="xs" px={{ base: "sm", md:"md" }} my="md">
+      <Text>Voici les commentaires du post :</Text>
+      
+      <CommentsList
+        postId={postId}
+        comments={comments}
+        setComments={setComments}
+        onCommentAdded={onCommentAdded}
+      />
+
+    </Stack>
   );
 }

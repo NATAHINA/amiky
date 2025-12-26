@@ -198,7 +198,6 @@ export default function SinglePostPage() {
       py={{ base: "md", sm: "xl" }} 
       px={{ base: "xs", sm: "sm" }}
     >
-      <Card shadow="md" p={{ base: "md", sm: "lg" }} radius="md" withBorder>
         
         {/* En-tête du post */}
         <Group justify="space-between" mb="md" wrap="nowrap">
@@ -215,6 +214,7 @@ export default function SinglePostPage() {
             <Stack gap={0} style={{ overflow: "hidden" }}>
               <Text 
                 fw={700} 
+                fz={{ base: 'sm', md: 'lg' }}
                 component={Link} 
                 href={`/profile/${post.author_id}`}
                 style={{ 
@@ -223,18 +223,11 @@ export default function SinglePostPage() {
                   overflow: "hidden", 
                   textOverflow: "ellipsis" 
                 }}
-                styles={{
-                  root: {
-                    '--avatar-size': '38px',
-                    '@media (min-width: 768px)': {
-                      '--avatar-size': '56px',
-                    },
-                  } as any
-                }}
+                
               >
                 {post.profiles?.full_name || post.profiles?.username}
               </Text>
-              <Text size="xs" c="dimmed" truncate>
+              <Text fz="xs" c="dimmed" truncate>
                 @{post.profiles?.username}
               </Text>
             </Stack>
@@ -242,7 +235,7 @@ export default function SinglePostPage() {
         </Group>
 
         {/* Date du post */}
-        <Text size="xs" c="dimmed" mb="sm">
+        <Text fz="xs" c="dimmed" mb="sm">
           {formatDetailsPostDate(post.created_at)}
         </Text>
 
@@ -286,7 +279,7 @@ export default function SinglePostPage() {
             >
               <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
             </ActionIcon>
-            <Text fw={600} size="sm">{post.likes_count}</Text>
+            <Text fw={600} fz="sm">{post.likes_count}</Text>
           </Group>
 
           <Group gap={6}>
@@ -301,11 +294,6 @@ export default function SinglePostPage() {
             <Text fw={600} size="sm">{post.comments_count}</Text>
           </Group>
 
-          {/* Optionnel: Compteur de vues à droite */}
-          <Group gap={6} ml="auto" c="dimmed">
-            <Eye size={16} />
-            <Text size="xs">{post.views}</Text>
-          </Group>
         </Group>
 
         <CommentsAlert
@@ -313,7 +301,6 @@ export default function SinglePostPage() {
           postId={post.id}
           onCommentAdded={incrementComments}
         />
-      </Card>
     </Container>
   );
 }
