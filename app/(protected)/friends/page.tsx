@@ -113,7 +113,7 @@ export default function FriendPage() {
   );
 
   return (
-    <Container size="xl">
+    <Container size="xl" px={{ base: "sm", md: 'md' }}>
       <Stack mt={30}>
         <Text fz={17} mb={15} fw={600}><Users size={14} /> Amis</Text>
         <Divider />

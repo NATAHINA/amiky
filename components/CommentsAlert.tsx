@@ -9,9 +9,10 @@ interface Props {
   onClose: () => void;
   postId: string;
   onCommentAdded?: () => void;
+  onCommentDelete?: () => void;
 }
 
-export default function CommentsAlert({ onClose, postId, onCommentAdded }: Props) {
+export default function CommentsAlert({ onClose, postId, onCommentAdded, onCommentDelete }: Props) {
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +52,7 @@ export default function CommentsAlert({ onClose, postId, onCommentAdded }: Props
         comments={comments}
         setComments={setComments}
         onCommentAdded={onCommentAdded}
+        onCommentDelete={onCommentDelete}
       />
 
     </Stack>

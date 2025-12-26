@@ -260,7 +260,7 @@ export default function PostsList() {
 
 
   if (loading) return (
-    <Center h="100vh"><Loader variant="dots" /></Center>
+    <Center h="100vh"><Loader size="sm" variant="dots" /></Center>
   );
 
   const onEmojiClick = (emojiObject: any) => {

@@ -90,6 +90,10 @@ export default function SinglePostPage() {
     setPost((p: any) => ({ ...p, comments_count: p.comments_count + 1 }));
   };
 
+  const decrementComments = () => {
+    setPost((p: any) => ({ ...p, comments_count: p.comments_count - 1 }));
+  };
+
   const handleLike = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -187,7 +191,7 @@ export default function SinglePostPage() {
   if (loading || !post) {
     return (
       <Group justify="center" h="80vh">
-        <Loader size="lg" variant="dots" />
+        <Loader size="sm" variant="dots" />
       </Group>
     );
   }
@@ -300,6 +304,7 @@ export default function SinglePostPage() {
           onClose={() => setCommentsOpen(false)}
           postId={post.id}
           onCommentAdded={incrementComments}
+          onCommentDelete={decrementComments}
         />
     </Container>
   );

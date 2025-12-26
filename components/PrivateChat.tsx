@@ -4,10 +4,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Button, Group, Textarea, ActionIcon, Box } from "@mantine/core";
-import { SendHorizontal } from "lucide-react";
+import { Button, Group, Textarea, ActionIcon, Box, Paper, Stack, ScrollArea } from "@mantine/core";
+import { SendHorizontal, Smile, X } from "lucide-react";
 import Picker from "emoji-picker-react";
-import { v4 as uuidv4 } from "uuid";
 
 interface MessageFormProps {
   postId?: string;
@@ -26,14 +25,22 @@ type Message = {
 };
 
 export default function PrivateChat({ otherUserId, conversationId, postId, onNewMessage }: MessageFormProps) {
+
   const [text, setText] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [convId, setConvId] = useState<MessageFormProps | null>(null);
+  const [convId, setConvId] = useState<string | null>(null); // Correction type
   const [messages, setMessages] = useState<Message[]>([]);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const viewport = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
-
   const [isCreating, setIsCreating] = useState(false);
+
+  const scrollToBottom = () => {
+    viewport.current?.scrollTo({ top: viewport.current.scrollHeight, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     if (!convId) return;
@@ -74,10 +81,6 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
     };
 
   }, [convId]); 
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
 
   useEffect(() => {
@@ -217,109 +220,132 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
 
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ flex: 1, overflowY: "auto", padding: "10px" }}>
-        {messages.map((msg) => {
+    <Stack h="100%" gap={0} style={{ overflow: "hidden", position: 'relative' }}>
+      
+      {/* Zone des messages */}
+      <ScrollArea 
+        flex={1} 
+        p="md" 
+        viewportRef={viewport}
+        offsetScrollbars
+      >
+        {messages.map((msg, index) => {
           const isMine = msg.sender_id === currentUser?.id;
-
+          
           return (
-            <div
-              key={msg.id} 
+            <Box
+              key={msg.id || index}
               style={{
                 display: "flex",
                 justifyContent: isMine ? "flex-end" : "flex-start",
-                marginBottom: "8px",
+                marginBottom: "12px",
               }}
             >
-              <div
+              <Box
                 style={{
-                  background: isMine ? "#0078FF" : "#E4E6EB",
+                  backgroundColor: isMine ? "var(--mantine-color-blue-6)" : "var(--mantine-color-gray-2)",
                   color: isMine ? "white" : "black",
-                  padding: "8px 12px",
-                  borderRadius: "12px",
-                  maxWidth: "70%",
+                  padding: "10px 14px",
+                  borderRadius: isMine ? "16px 16px 2px 16px" : "16px 16px 16px 2px",
+                  maxWidth: "85%", // Plus large sur mobile
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
                 }}
               >
-                {msg.message}
+                <Box style={{ wordBreak: "break-word", fontSize: "14px", lineHeight: "1.5" }}>
+                  {msg.message}
+                </Box>
 
-                <div
+                <Box
                   style={{
-                    fontSize: "11px",
+                    fontSize: "10px",
                     marginTop: "4px",
                     textAlign: isMine ? "right" : "left",
-                    opacity: 0.7,
+                    opacity: 0.8,
+                    fontWeight: 500
                   }}
                 >
                   {formatMessageDate(msg.created_at)}
-                </div>
-              </div>
-            </div>
+                </Box>
+              </Box>
+            </Box>
           );
         })}
-        <div ref={bottomRef} />
-      </div>
+      </ScrollArea>
 
-
-      <Group p="xs" style={{
-        position: "sticky",
-        bottom: 0,
-        zIndex: 10,
-      }}>
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.currentTarget.value)}
-          placeholder="Écrire un message..."
-          autosize
-          minRows={1}
-          maxRows={4}
-          style={{ flex: 1 }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
-
-        <ActionIcon onClick={() => setShowEmojiPicker(v => !v)}>😊</ActionIcon>
-
-        <Button onClick={() => sendMessage()} size="sm">
-          <SendHorizontal size={14} />
-        </Button>
-      </Group>
-
+      {/* Emoji Picker - Positionné au dessus de la barre de saisie */}
       {showEmojiPicker && (
-        <Box style={{
-          position: "absolute",
-          bottom: "60px",
-          right: "10px",
-          zIndex: 20,
-        }}>
-          <div
-            style={{
-              width: "100%",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              padding: 8,
-              position: "relative",
-              backgroundColor: "#fff",
-            }}
-          >
-            {/* Bouton Fermer */}
-            <Button
-              variant="subtle"
-              size="xs"
-              style={{ position: "absolute", top: 5, right: 5 }}
-              onClick={() => setShowEmojiPicker(false)}
-            >
-              ✕ Fermer
-            </Button>
-
-            <Picker onEmojiClick={(emoji) => onEmojiClick(emoji)} />
-          </div>
-         
-        </Box>
+        <Paper 
+          withBorder 
+          shadow="xl" 
+          p={0}
+          style={{
+            position: "absolute",
+            bottom: "70px",
+            left: "10px",
+            right: "10px",
+            zIndex: 100,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <Group justify="space-between" p="xs" bg="var(--mantine-color-gray-0)">
+            <Box fz="xs" fw={700} c="dimmed">Choisir un emoji</Box>
+            <ActionIcon size="sm" variant="subtle" onClick={() => setShowEmojiPicker(false)}>
+              <X size={14} />
+            </ActionIcon>
+          </Group>
+          <Picker 
+            onEmojiClick={(emoji) => onEmojiClick(emoji)} 
+            width="100%" 
+            height={300}
+            previewConfig={{ showPreview: false }}
+          />
+        </Paper>
       )}
-    </div>
+
+      {/* Barre de saisie */}
+      <Paper p="sm" withBorder style={{ borderLeft: 0, borderRight: 0, borderBottom: 0 }}>
+        <Group gap="xs" align="flex-end" wrap="nowrap">
+          <ActionIcon 
+            onClick={() => setShowEmojiPicker(v => !v)} 
+            variant="light" 
+            size="lg" 
+            radius="xl"
+            color={showEmojiPicker ? "blue" : "gray"}
+          >
+            <Smile size={20} />
+          </ActionIcon>
+
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.currentTarget.value)}
+            placeholder="Écrire..."
+            autosize
+            minRows={1}
+            maxRows={4}
+            style={{ flex: 1 }}
+            radius="md"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+          />
+
+          <ActionIcon 
+            onClick={() => sendMessage()} 
+            size="lg" 
+            radius="xl" 
+            variant="filled" 
+            disabled={!text.trim() || isCreating}
+          >
+            <SendHorizontal size={18} />
+          </ActionIcon>
+        </Group>
+      </Paper>
+    </Stack>
   );
+
 }

@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
-  Text, Group, Avatar, Textarea, Button, Stack, Divider, ActionIcon, Paper, Box
+  Text, Group, Avatar, Textarea, Button, Stack, Divider, ActionIcon, Paper, Box, Menu, rem
 } from "@mantine/core";
 import Picker from "emoji-picker-react";
 import Link from "next/link";
-import { Send } from "lucide-react";
+import { SendHorizontal, Smile, X, EllipsisVertical, Pencil } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -29,11 +29,39 @@ interface Props {
   comments: Comment[];
   setComments: (comments: Comment[]) => void;
   onCommentAdded?: () => void;
+  onCommentDelete?: () => void;
 }
 
-export default function CommentsList({postId, comments, setComments, onCommentAdded, }: Props) {
+export default function CommentsList({postId, comments, setComments, onCommentAdded, onCommentDelete }: Props) {
   const [content, setContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+  }, []);
+
+  
+  const handleDeleteComment = async (commentId: string) => {
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    
+    if (!error) {
+      setComments(comments.filter(c => c.id !== commentId));
+      if (onCommentDelete) onCommentDelete();
+    } else {
+      console.error("Erreur suppression:", error.message);
+    }
+  };
+
+  
+  const handleEditClick = (comment: Comment) => {
+    setContent(comment.content);
+    setEditingCommentId(comment.id);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  };
 
 
   useEffect(() => {
@@ -50,71 +78,48 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
   }, []);
 
 
-
   const sendComment = async () => {
     if (!content.trim()) return;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("comments")
-      .insert({
-        post_id: postId,
-        author_id: user.id,
-        content,
-      })
-      .select(`
-        id,
-        content,
-        created_at,
-        profiles:author_id (
-          id,
-          full_name,
-          avatar_url,
-          username
-        )
-      `)
-      .single();
+    if (editingCommentId) {
+      const { data, error } = await supabase
+        .from("comments")
+        .update({ content })
+        .eq("id", editingCommentId)
+        // .select(`id, content, created_at, profiles:author_id (id, full_name, avatar_url, username)`)
+        .select('*, profiles(*)')
+        .single();
 
+      // if (!error && data) {
+      //   setComments(comments.map(c => c.id === editingCommentId ? data : c));
+      //   setEditingCommentId(null); // Sortir du mode édition
+      //   setContent("");
+      // }
+    } else {
+      // --- MODE INSERTION (votre code actuel) ---
+      const { data, error } = await supabase
+        .from("comments")
+        .insert({ post_id: postId, author_id: user.id, content })
+        .select(`id, content, created_at, profiles:author_id (id, full_name, avatar_url, username)`)
+        .single();
 
-    if (!error && data) {
-      const normalized = {
-        ...data,
-        profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
-      };
+      if (!error && data) {
+        const newComment = {
+          ...data,
+          profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles
+        };
 
-      setComments([...comments, normalized]);
-
-      if (onCommentAdded) onCommentAdded();
-    }
-
-    setContent("");
-
-    const { data: postData, error: postError } = await supabase
-      .from("posts")
-      .select("author_id")
-      .eq("id", postId)
-      .single();
-
-    if (!postError && postData) {
-      const postAuthorId = postData.author_id;
-
-      // Ne pas créer de notification si l'auteur commente son propre post
-      if (postAuthorId !== user.id) {
-        await supabase.from("notifications").insert({
-          user_id: postAuthorId, // destinataire de la notification
-          from_user: user.id,    // utilisateur qui a commenté
-          type: "comment",
-          post_id: postId,
-        });
+        setComments([...comments, newComment]);
+        setContent("");
+        if (onCommentAdded) onCommentAdded();
       }
-    }
 
-    
+    }
   };
+
 
   const onEmojiClick = (emojiObject: any) => {
     setContent((prev) => prev + emojiObject.emoji);
@@ -163,78 +168,145 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
   }
 
 
+
   return (
-    <Stack gap={0}>
+    <Stack gap={0} style={{ position: 'relative' }}>
       <Box mb="md">
         {[...new Map(comments.map((c) => [c.id, c])).values()].map((c, index) => (
-          <Box key={c.id || index} id={`comment-${c.id}`} py={8} style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-            <Group align="flex-start">
-              <Avatar src={c.profiles?.avatar_url || ""} radius="xl" size="sm" />
-              <Stack gap={0}>
-                <Text fw={600} component={Link} href={`/profile/${c.profiles?.id}`}>
-                  {c.profiles?.full_name || c.profiles?.username}
-                </Text>
-                <Text size="xs" color="dimmed">
-                  {formatCommentsDate(c.created_at)}
-                </Text>
-              </Stack>
+          <Box 
+            key={c.id || index} 
+            id={`comment-${c.id}`} 
+            py={10} 
+            style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
+          >
+            <Group align="flex-start" justify="space-between" wrap="nowrap">
+              <Group align="flex-start" gap="xs" style={{ flex: 1 }}>
+                <Avatar src={c.profiles?.avatar_url || ""} radius="xl" size="sm" />
+                <Stack gap={0} style={{ flex: 1 }}>
+                  <Group gap="xs" align="center">
+                    <Text fw={600} size="sm" component={Link} href={`/profile/${c.profiles?.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      {c.profiles?.full_name || c.profiles?.username}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {formatCommentsDate(c.created_at)}
+                    </Text>
+                  </Group>
+                  <Text size="sm" mt={2} style={{ wordBreak: 'break-word' }}>{c.content}</Text>
+                </Stack>
+              </Group>
+
+              {/* Menu d'actions (uniquement si c'est l'auteur du commentaire) */}
+              {currentUserId === c.profiles?.id && (
+                <Menu shadow="md" width={150} position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <ActionIcon variant="subtle" color="gray" size="sm" radius="xl">
+                      <EllipsisVertical size={16} />
+                    </ActionIcon>
+                  </Menu.Target>
+
+                  <Menu.Dropdown>
+                    <Menu.Item 
+                      onClick={() => {handleEditClick(c);}}
+                    >
+                      Modifier
+                    </Menu.Item>
+                    <Menu.Item 
+                      color="red" 
+                      onClick={() => {handleDeleteComment(c.id); setShowEmojiPicker(false);}}
+                    >
+                      Supprimer
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
             </Group>
-            <Text>{c.content}</Text>
           </Box>
         ))}
       </Box>
 
-      <Stack gap={4} mt="sm">
-        <Box style={{ position: 'relative' }}>
-          <Textarea
-            placeholder="Écrire un commentaire..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <Group justify="flex-end" mt={5}>
+      {/* Zone de saisie */}
+      <Box mt="sm">
+        {editingCommentId && (
+          <Group justify="space-between" px="xs" mb={4}>
+            <Button variant="transparent" size="compact-xs" color="red" onClick={() => {
+              setEditingCommentId(null);
+              setContent("");
+            }}>
+              Annuler
+            </Button>
+          </Group>
+        )}
+        <Paper p="xs" withBorder style={{ borderLeft: 0, borderRight: 0, borderBottom: 0, borderColor: editingCommentId ? 'none' : undefined }}>
+          <Group gap="xs" align="flex-end" wrap="nowrap">
             <ActionIcon 
-              onClick={() => setShowEmojiPicker((v) => !v)} 
+              onClick={() => setShowEmojiPicker(v => !v)} 
+              variant="light" 
               size="lg" 
-              variant="subtle"
-              title="Ajouter un emoji"
+              radius="xl"
+              color={showEmojiPicker ? "blue" : "gray"}
             >
-              😊
+              <Smile size={20} />
+            </ActionIcon>
+
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.currentTarget.value)}
+              placeholder={editingCommentId ? "Modifier votre commentaire..." : "Écrire un commentaire..."}
+              autosize
+              minRows={2}
+              style={{ flex: 1 }}
+              radius="md"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendComment();
+                  setShowEmojiPicker(false);
+                }
+              }}
+            />
+
+            <ActionIcon 
+              onClick={() => {sendComment(); setShowEmojiPicker(false);}} 
+              size="lg" 
+              radius="xl" 
+              variant="filled" 
+              color={editingCommentId ? "blue" : "indigo"} // Change de couleur en mode édition
+            >
+              <SendHorizontal size={18} />
+            </ActionIcon>
+
+          </Group>
+        </Paper>
+      </Box>
+
+      {/* Emoji Picker Modal */}
+      {showEmojiPicker && (
+        <Paper 
+          withBorder 
+          shadow="xl" 
+          style={{
+            position: "absolute",
+            bottom: "80px",
+            left: 0,
+            right: 0,
+            zIndex: 100,
+          }}
+        >
+          <Group justify="space-between" p="xs" bg="var(--mantine-color-gray-0)">
+            <Text fz="xs" fw={700} c="dimmed">Emojis</Text>
+            <ActionIcon size="sm" variant="subtle" onClick={() => setShowEmojiPicker(false)}>
+              <X size={14} />
             </ActionIcon>
           </Group>
-        </Box>
-
-        {showEmojiPicker && (
-            <Paper withBorder shadow="md" p="xs" radius="md" style={{ zIndex: 10 }}>
-              <Group justify="space-between" mb="xs">
-                <Text size="xs" fw={500} c="dimmed">Choisir un emoji</Text>
-                <ActionIcon size="xs" variant="subtle" onClick={() => setShowEmojiPicker(false)}>
-                  ✕
-                </ActionIcon>
-              </Group>
-              
-              <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                <Picker 
-                  onEmojiClick={onEmojiClick} 
-                  width="100%" 
-                  height={350}
-                  skinTonesDisabled
-                  previewConfig={{ showPreview: false }}
-                />
-              </div>
-            </Paper>
-          )}
-      </Stack>
-
-      <Button 
-          onClick={sendComment} 
-          fullWidth 
-          size="sm" 
-          radius="md"
-          leftSection={<Send size={16} />}
-        >
-          Envoyer
-        </Button>
+          <Picker 
+            onEmojiClick={onEmojiClick} 
+            width="100%" 
+            height={300}
+            previewConfig={{ showPreview: false }}
+          />
+        </Paper>
+      )}
     </Stack>
   );
+
 }
