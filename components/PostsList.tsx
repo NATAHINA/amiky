@@ -329,7 +329,7 @@ export default function PostsList() {
           ta={{ base: "center", xs: "left" }}
           style={{ width: '100%' }}
         >
-          Posts
+          Publications
         </Text>
         
         <Button 

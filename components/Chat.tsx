@@ -50,15 +50,12 @@ export default function Chat({ conversation, onBack }: ChatProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   useEffect(() => {
-    const unreadCount = messages.filter(m => !m.is_read).length;
-    if (unreadCount > 0) {
-      document.title = `(${unreadCount}) AMIKY`;
-    } else {
-      document.title = "AMIKY";
-    }
+    
+    document.title = "Discussions | AMIKY";
+    
   }, [messages]);
 
-
+  
 
   useEffect(() => {
     if (!userId) return;
@@ -90,6 +87,7 @@ export default function Chat({ conversation, onBack }: ChatProps) {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null));
   }, []);
 
+  
   
   useEffect(() => {
     const markThisAsRead = async () => {
@@ -268,7 +266,7 @@ export default function Chat({ conversation, onBack }: ChatProps) {
       style={{ position: "relative" }}
     >
       {/* HEADER */}
-      <Card p="sm" withBorder radius={0} style={{ borderTop: 0, borderLeft: 0, borderRight: 0 }}>
+      <Card p="sm" withBorder radius={0} style={{ borderTop: 0, borderLeft: 0, borderRight: 0 }} >
         <Flex align="center" justify="space-between">
           <Flex align="center" gap="sm">
             {isMobile && (
