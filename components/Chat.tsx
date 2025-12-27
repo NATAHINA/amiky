@@ -15,9 +15,10 @@ import {
   ActionIcon,
   Box,
   Indicator, 
-  useMantineColorScheme
+  useMantineColorScheme,
+  Menu
 } from "@mantine/core";
-import { Send, Smile, ChevronLeft } from "lucide-react";
+import { Send, Smile, ChevronLeft, MoreVertical } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import Picker from "emoji-picker-react";
 import { useMediaQuery } from "@mantine/hooks";
@@ -28,6 +29,7 @@ interface Message {
   sender_id: string;
   message: string;
   created_at: string;
+  is_read?: boolean;
 }
 
 interface ChatProps {
@@ -41,11 +43,49 @@ export default function Chat({ conversation, onBack }: ChatProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const { colorScheme } = useMantineColorScheme();
+
+  const [isRecipientOnline, setIsRecipientOnline] = useState(false);
   
   const viewport = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // 1. Récupérer l'ID de l'utilisateur courant
+  useEffect(() => {
+    const unreadCount = messages.filter(m => !m.is_read).length;
+    if (unreadCount > 0) {
+      document.title = `(${unreadCount}) AMIKY`;
+    } else {
+      document.title = "AMIKY";
+    }
+  }, [messages]);
+
+
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase.channel('online-users', {
+      config: { presence: { key: userId } },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const onlineIds = Object.keys(state);
+        setIsRecipientOnline(onlineIds.includes(conversation.recipient.id));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [conversation.recipient.id, userId]);
+
+
+  // Récupérer l'ID de l'utilisateur courant
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null));
   }, []);
@@ -70,14 +110,13 @@ export default function Chat({ conversation, onBack }: ChatProps) {
   }, [conversation.id, messages.length]); // Se déclenche au changement de conv ou quand un message arrive
 
 
-  // 2. Charger les messages initiaux et écouter le Realtime
+  // Charger les messages initiaux et écouter le Realtime
   useEffect(() => {
     if (!conversation?.id) return;
 
     const isTemporary = conversation.id.startsWith("no-conv-");
 
     if (!isTemporary) {
-      // 1. Charger les messages initiaux
       const fetchMessages = async () => {
         const { data } = await supabase
           .from("messages")
@@ -93,28 +132,19 @@ export default function Chat({ conversation, onBack }: ChatProps) {
       };
       fetchMessages();
 
-      // 2. Souscription Temps Réel UNIQUE
       const channel = supabase
-        .channel(`chat_room_${conversation.id}`) // Nom unique par salon
+        .channel(`chat_room_${conversation.id}`)
         .on(
           "postgres_changes",
           { 
-            event: "INSERT", 
+            event: "DELETE", 
             schema: "public", 
             table: "messages", 
             filter: `conversation_id=eq.${conversation.id}` 
           },
+       
           (payload) => {
-            const incomingMsg = payload.new as Message;
-            
-            setMessages((prev) => {
-              // VERIFICATION CRUCIALE : Éviter le doublon si l'optimistic UI a déjà ajouté le message
-              // On vérifie par contenu et sender_id si l'ID diffère (car l'ID DB est différent de l'ID temporaire)
-              const alreadyExists = prev.some(m => m.id === incomingMsg.id);
-              if (alreadyExists) return prev;
-              
-              return [...prev, incomingMsg];
-            });
+            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
             
             setTimeout(() => scrollToBottom("smooth"), 100);
           }
@@ -181,7 +211,7 @@ export default function Chat({ conversation, onBack }: ChatProps) {
 
       if (msgErr) throw msgErr;
 
-      // Remplacer le message temporaire par le message réel (pour avoir le bon ID de la DB)
+      // Remplacer le message temporaire par le message réel
       setMessages((prev) => 
         prev.map(m => m.id === tempId ? realMsg : m)
       );
@@ -213,10 +243,26 @@ export default function Chat({ conversation, onBack }: ChatProps) {
   }
 
 
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId)
+        .eq("sender_id", userId); // Sécurité : seul l'auteur peut supprimer
+
+      if (error) throw error;
+
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch (error) {
+      console.error("Erreur suppression:", error);
+    }
+  };
+
   return (
     <Flex 
       direction="column" 
-      h="100%" 
+      h="90%" 
       w="100%"
       bg="var(--mantine-color-body)" 
       style={{ position: "relative" }}
@@ -230,12 +276,20 @@ export default function Chat({ conversation, onBack }: ChatProps) {
                 <ChevronLeft size={24} />
               </ActionIcon>
             )}
-            <Indicator color="green" offset={2} size={9} position="bottom-end">
+
+            <Indicator 
+              color={isRecipientOnline ? "green" : "gray"}
+              offset={5} 
+              size={9} 
+              position="bottom-end"
+            >
               <Avatar src={conversation.recipient.avatar_url} radius="xl" />
             </Indicator>
             <Box>
-              <Text fw={600} fz="sm">{conversation.recipient.full_name}</Text>
-              <Text fz="xs" c="dimmed">En ligne</Text>
+              <Text fw={600} fz="sm">{conversation.recipient.full_name || conversation.recipient.username}</Text>
+              <Text fz="xs" c="dimmed">
+                {isRecipientOnline ? "En ligne" : "Hors ligne"}
+              </Text>
             </Box>
           </Flex>
         </Flex>
@@ -247,7 +301,26 @@ export default function Chat({ conversation, onBack }: ChatProps) {
           {messages.map((msg) => {
             const isMe = msg.sender_id === userId;
             return (
-              <Flex key={msg.id} justify={isMe ? "flex-end" : "flex-start"}>
+              <Flex key={msg.id} justify={isMe ? "flex-end" : "flex-start"} align="center" gap="xs">
+                {isMe && (
+                  <Menu shadow="md" width={150}>
+                    <Menu.Target>
+                      <ActionIcon variant="subtle" color="gray" size="sm" className="show-on-hover">
+                        <MoreVertical size={14} />
+                      </ActionIcon>
+                    </Menu.Target>
+
+                    <Menu.Dropdown>
+                      <Menu.Item 
+                        color="red" 
+                        onClick={() => deleteMessage(msg.id)}
+                      >
+                        Supprimer
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
+
                 <Box style={{ maxWidth: "80%" }}>
                   <Card
                     px="md"

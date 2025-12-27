@@ -139,7 +139,7 @@ export default function SuggestionsList({
           {/* 🖥️ MD+ → GRID 15 PAR PAGE */}
           <Grid>
             {paginatedSuggestions.map((u) => (
-              <Grid.Col key={u.id} span={{ xs: 6, sm: 6, md: 4, lg: 3 }}>
+              <Grid.Col key={u.id} span={{ xs: 6, sm: 4, md: 4, lg: 3 }}>
                 <SuggestionCard u={u} />
               </Grid.Col>
             ))}

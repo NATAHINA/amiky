@@ -239,7 +239,7 @@ export default function InvitationsPage({ currentUserId }: InvitationsPageProps)
         <>
           <Grid>
             {paginatedFriends.map(f => (
-              <Grid.Col key={f.id} span={{ xs: 6, sm: 6, md: 4, lg: 3 }}>
+              <Grid.Col key={f.id} span={{ xs: 6, sm: 4, md: 4, lg: 3 }}>
                 <InvitationCard f={f} />
               </Grid.Col>
             ))}

@@ -160,14 +160,25 @@ export default function Navbar() {
           boxShadow: "var(--mantine-shadow-xs)",
         }}
       >
-        <Container size="xl" h={60}>
+        <Container size="xl" h={70}>
           <Group justify="space-between" h="100%">
-            <Title order={3} fw={900} fz={22} style={{ letterSpacing: "-1px" }}>
-              A<span style={{ color: theme.colors.indigo[7] }}>MIKY</span>
-            </Title>
+            
+            <Anchor component={Link} href="/" underline="never">
+                <img 
+                  src="/amiky_chat.png" 
+                  alt="Amiky Logo" 
+                  style={{ 
+                    height: rem(75), // Ajustez la taille selon vos besoins
+                    width: "auto",
+                    display: "block"
+                  }} 
+                  loading="lazy"
+                />
+            </Anchor>
 
             {/* Desktop Navigation */}
             {!isMobile && (
+
               <Group gap={30}>
                 <NavItems />
               </Group>

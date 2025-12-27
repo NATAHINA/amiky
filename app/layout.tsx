@@ -9,8 +9,15 @@ import type { Metadata } from "next";
 import { theme } from "../theme";
 
 export const metadata: Metadata = {
-  title: "AMIKY - Chat app",
-  description: "",
+  title: {
+    default: "Amiky",
+    template: "%s | Amiky - Chat en temps réel",
+  },
+  // icons: {
+  //   icon: "/amiky_chat.png", // Chemin vers public/amiky.png
+  //   apple: "/amiky_chat.png", // Pour les appareils iOS
+  // },
+  description: "Plateforme de communication intuitive",
 };
 
 

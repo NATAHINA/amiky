@@ -58,8 +58,8 @@ export default function FollowButton({
       disabled={status !== "follow"}
       onClick={handleFollow}
     >
-      {status === "follow" && "Suivre"}
-      {status === "pending" && "En attente"}
+      {status === "follow" && "Ajouter"}
+      {status === "pending" && "Envoyé"}
       {status === "accepted" && "Amis"}
     </Button>
   );
