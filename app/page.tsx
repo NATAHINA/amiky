@@ -184,7 +184,7 @@ export default function Home() {
               <Title order={2}>Notre Mission</Title>
               <Text fz="md" style={{ lineHeight: 1.7 }}>
                 Amiky est né de l'idée que les réseaux sociaux doivent revenir à l'essentiel : 
-                **la connexion humaine**. Nous avons conçu une interface épurée, sans algorithmes 
+                <span fw="600">la connexion humaine</span>. Nous avons conçu une interface épurée, sans algorithmes 
                 complexes qui dictent ce que vous devez voir. 
               </Text>
               <List
