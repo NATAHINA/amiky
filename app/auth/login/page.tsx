@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import Link from 'next/link';
 import { Mail, Lock, ArrowLeft } from "lucide-react";
-// import { GoogleIcon } from '@/components/GoogleIcon';
+import { GoogleIcon } from '@/components/GoogleIcon';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  // const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const theme = useMantineTheme();
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
@@ -51,21 +51,21 @@ export default function LoginPage() {
     }
   };
 
-  // const handleGoogleLogin = async () => {
-  //   setGoogleLoading(true);
-  //   setError(null);
-  //   const { error: googleAuthError } = await supabase.auth.signInWithOAuth({
-  //     provider: 'google',
-  //     options: {
-  //       redirectTo: `${window.location.origin}/auth/callback`, // Assurez-vous que cette URL est configurée dans Supabase
-  //     },
-  //   });
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setError(null);
+    const { error: googleAuthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`, // Assurez-vous que cette URL est configurée dans Supabase
+      },
+    });
 
-  //   if (googleAuthError) {
-  //     setError(`Erreur de connexion Google: ${googleAuthError.message}`);
-  //     setGoogleLoading(false);
-  //   }
-  // };
+    if (googleAuthError) {
+      setError(`Erreur de connexion Google: ${googleAuthError.message}`);
+      setGoogleLoading(false);
+    }
+  };
 
 
   if (!mounted) return null;
@@ -85,7 +85,7 @@ export default function LoginPage() {
       }}
     >
       <Container size="xl" w="100%" p="md">
-         <Grid gutter={50} align="center" justify="center" p="sm">
+         <Grid gutter={50} align="center" justify="center">
           
           {/* Section visuelle à gauche */}
           <Grid.Col span={{ base: 12, xs: 10, sm: 8, md: 6 }} visibleFrom="md"> 
@@ -205,7 +205,7 @@ export default function LoginPage() {
 
                   <Divider label="OU" labelPosition="center" my="sm" />
 
-                  {/*<Button
+                  <Button
                     leftSection={<GoogleIcon />} // Utilise le composant d'icône Google
                     variant="default"
                     fullWidth
@@ -215,7 +215,7 @@ export default function LoginPage() {
                     loading={googleLoading}
                   >
                     Continuer avec Google
-                  </Button>*/}
+                  </Button>
 
                   <Flex justify="center" gap={5}>
                     <Text fz="sm">Nouveau ici ?</Text>

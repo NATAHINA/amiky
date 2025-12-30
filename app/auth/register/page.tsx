@@ -89,7 +89,7 @@ export default function SignupPage() {
       }}
     >
       <Container size="xl" w="100%" p="md">
-         <Grid gutter={50} align="center" justify="center" p="sm">
+         <Grid gutter={50} align="center" justify="center">
           
           {/* Section visuelle à gauche */}
           <Grid.Col span={{ base: 12, xs: 10, sm: 8, md: 6 }} visibleFrom="md"> 
