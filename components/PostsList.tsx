@@ -228,7 +228,8 @@ export default function PostsList() {
     const { error } = await supabase.from("posts").insert({
       content: newPostContent,
       media_urls: media_urls.length > 0 ? media_urls : null,
-      author_id: currentUser.id
+      author_id: currentUser.id,
+      created_at: new Date().toISOString()
     });
 
     if (error) {
@@ -268,91 +269,47 @@ export default function PostsList() {
     setShowEmojiPicker(true);
   };
 
-  // function formatPostDate(dateString: string) {
-  //   const date = new Date(dateString);
-  //   const now = new Date();
-
-  //   const diffTime = now.getTime() - date.getTime();
-  //   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  //   // Format heure : HH:MM
-  //   const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
-  //     hour: "2-digit",
-  //     minute: "2-digit",
-  //   });
-  //   const timeString = timeFormatter.format(date);
-
-  //   if (
-  //     date.getDate() === now.getDate() &&
-  //     date.getMonth() === now.getMonth() &&
-  //     date.getFullYear() === now.getFullYear()
-  //   ) {
-  //     return `Aujourd'hui à ${timeString}`; 
-  //   } else if (diffDays === 1) {
-  //     return `Hier à ${timeString}`;
-  //   } else if (diffDays === 2) {
-  //     return `Avant-hier à ${timeString}`;
-  //   } else if (diffDays < 7) {
-  //     const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
-  //     const dayName = dayFormatter.format(date);
-
-  //     const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-
-  //     return `${dayNameCapitalized} à ${timeString}`;
-  //   } else {
-  //     const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
-  //       day: "2-digit",
-  //       month: "2-digit",
-  //       year: "numeric",
-  //     });
-  //     return `${fullFormatter.format(date)} à ${timeString}`;
-  //   }
-  // }
-
   function formatPostDate(dateString: string) {
     const date = new Date(dateString);
     const now = new Date();
 
-    // On crée des versions "minuit" pour comparer uniquement les jours calendaires
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const postDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    
-    // Différence en jours calendaires
-    const diffDays = Math.round((today.getTime() - postDay.getTime()) / (1000 * 60 * 60 * 24));
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    // Formatteur pour l'heure (ex: 14:30)
-    const timeString = new Intl.DateTimeFormat("fr-FR", {
+    // Format heure : HH:MM
+    const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
-    }).format(date);
+    });
+    const timeString = timeFormatter.format(date);
 
-    // LOGIQUE DE RETOUR
-    if (diffDays === 0) {
+    if (
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
+    ) {
       return `Aujourd'hui à ${timeString}`; 
-    } 
-    
-    if (diffDays === 1) {
+    } else if (diffDays === 1) {
       return `Hier à ${timeString}`;
-    } 
-    
-    if (diffDays === 2) {
+    } else if (diffDays === 2) {
       return `Avant-hier à ${timeString}`;
-    } 
+    } else if (diffDays < 7) {
+      const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
+      const dayName = dayFormatter.format(date);
 
-    if (diffDays < 7) {
-      const dayName = new Intl.DateTimeFormat("fr-FR", { weekday: "long" }).format(date);
-      return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} à ${timeString}`;
-    } 
+      const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
 
-    // Pour les dates plus anciennes (ex: 15/12/2025 à 14:30)
-    const fullDate = new Intl.DateTimeFormat("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(date);
-    
-    return `${fullDate} à ${timeString}`;
+      return `${dayNameCapitalized} à ${timeString}`;
+    } else {
+      const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return `${fullFormatter.format(date)} à ${timeString}`;
+    }
   }
+
 
 
 
