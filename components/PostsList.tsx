@@ -498,7 +498,7 @@ export default function PostsList() {
             onChange={(e) => setNewPostContent(e.currentTarget.value)}
             placeholder="Votre contenu..."
             autosize
-            minRows={10}
+            minRows={6}
             style={{ flex: 1 }}
             radius="md"
           />
