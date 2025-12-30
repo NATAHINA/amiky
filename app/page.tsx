@@ -1,291 +1,274 @@
+
+
 "use client";
 
-import { useState, useEffect } from 'react';
-import {Container, Group, Title, Button, Text, Stack, ThemeIcon, useMantineTheme} from "@mantine/core";
-import ThemeToggle from "@/components/ThemeToggle";
-import '@mantine/core/styles.css';
-import '@mantine/carousel/styles.css';
+import {
+  Container, Group, Title, Button, Text, Stack, ThemeIcon, useMantineTheme,
+  useComputedColorScheme, AppShell, Badge, Card, SimpleGrid, Flex, Anchor, rem,
+  Box, Overlay, Paper
+} from "@mantine/core";
+import { useMediaQuery, useWindowScroll } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { motion } from "framer-motion";
-import {Badge, Card, SimpleGrid, AspectRatio, Grid, Skeleton, Flex } from '@mantine/core';
-import { Users, MessageSquare, Bell, Image, ShieldCheck, BarChart3 } from "lucide-react";
+import { Users, MessageSquare, Bell, Image as ImageIcon, ArrowRight } from "lucide-react";
 import { Carousel } from '@mantine/carousel';
-import { Paper,} from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
+import '@mantine/core/styles.css';
+import '@mantine/carousel/styles.css';
+import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 import Footer from "@components/Footer";
 
+const cardHoverStyle = {
+  transition: 'transform 200ms ease, box-shadow 200ms ease',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: 'var(--mantine-shadow-md)',
+  }
+};
+
 const skillsData = [
-  {
-    category: "Utilisateurs & Profils",
-    icon: <Users size={24} />,
-    description:
-      "Gestion des comptes, profils personnalisés, avatars, bios et paramètres.",
-    color: "blue",
-  },
-  {
-    category: "Messagerie & Communication",
-    icon: <MessageSquare size={24} />,
-    description: "Chat en temps réel, messages privés, commentaires sous les posts et mentions @username.",
-    color: "orange",
-  },
-  {
-    category: "Publications & Médias",
-    icon: <Image size={24} />,
-    description:
-      "Création de posts texte, image ou vidéo, fil d’actualité dynamique, likes et partages.",
-    color: "green",
-  },
-  {
-    category: "Notifications",
-    icon: <Bell size={24} />,
-    description:
-      "Alertes pour les nouveaux abonnés, likes, commentaires, messages reçus et interactions.",
-    color: "yellow",
-  },
-  {
-    category: "Sécurité & Modération",
-    icon: <ShieldCheck size={24} />,
-    description:
-      "Signalements, outils anti-spam, modération de contenu et gestion des rôles administrateurs.",
-    color: "red",
-  },
-  {
-    category: "Statistiques & Analyse",
-    icon: <BarChart3 size={24} />,
-     description:
-      "Analytics sur les publications, taux d’engagement, tendances et hashtags populaires.",
-    color: "purple",
-  },
+  { category: "Utilisateurs & Profils", icon: <Users size={24} />, description: "Gestion des comptes, profils personnalisés et avatars.", color: "indigo" },
+  { category: "Messagerie en Direct", icon: <MessageSquare size={24} />, description: "Chat en temps réel, messages privés et mentions.", color: "grape" },
+  { category: "Flux Dynamique", icon: <ImageIcon size={24} />, description: "Partage de médias et interactions sociales intuitives.", color: "indigo" },
+  { category: "Notifications Hub", icon: <Bell size={24} />, description: "Alertes intelligentes pour rester connecté à l'essentiel.", color: "violet" },
 ];
 
 const data = [
-
-  {
-    image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&q=80",
-    title: "Partagez vos moments forts en un instant",
-    category: "Partage",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=800&q=80",
-    title: "Des discussions sécurisées et privées",
-    category: "Sécurité",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80",
-    title: "Retrouvez vos collègues après le travail",
-    category: "Meetup",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=800&q=80",
-    title: "Rencontrez de nouvelles personnes passionnées",
-    category: "Social",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=400&q=80",
-    title: "Moments de détente après une longue semaine",
-    category: "lifestyle",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80",
-    title: "Portrait du jour : nouvelle photo de profil",
-    category: "profile",
-  },
-  {
-    image:
-      "https://images.unsplash.com/photo-1527203561188-dae1bc1a417f?auto=format&fit=crop&w=400&q=80",
-    title: "Idées pour booster votre créativité",
-    category: "inspiration",
-  },
+  {image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&q=80", title: "Partagez vos moments forts en un instant", category: "Partage", },
+  {image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=800&q=80", title: "Des discussions sécurisées et privées", category: "Sécurité", },
+  {image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80", title: "Retrouvez vos collègues après le travail", category: "Meetup", },
+  {image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=800&q=80", title: "Rencontrez de nouvelles personnes passionnées", category: "Social", },
+  {image: "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=400&q=80", title: "Moments de détente après une longue semaine", category: "lifestyle", },
+  {image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80", title: "Portrait du jour : nouvelle photo de profil", category: "profile", },
 ];
 
-
 export default function Home() {
-
   const router = useRouter();
   const theme = useMantineTheme();
   const mobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-
+  const computedColorScheme = useComputedColorScheme('light');
+  const [scroll] = useWindowScroll();
 
   return (
-    <main>
+    <AppShell
+      header={{ height: 80, collapsed: false, offset: true }}
+      padding="0"
+    >
+      <AppShell.Header 
+        withBorder={scroll.y > 20}
+        style={{ 
+          backgroundColor: scroll.y > 20 ? 'var(--mantine-color-body)' : 'transparent',
+          transition: 'all 0.3s ease',
+          backdropFilter: scroll.y > 20 ? 'blur(10px)' : 'none'
+        }}
+      >
+        <Container size="xl" h="100%">
+          <Flex justify="space-between" align="center" h="100%">
+            <Anchor component={Link} href="/" underline="never">
+               <img 
+                src="/amiky_chat.svg" 
+                alt="Amiky" 
+                style={{ 
+                  height: rem(60), 
+                  filter: computedColorScheme === 'dark' ? 'contrast(0.9) brightness(2.2)' : 'none' 
+                }} 
+              />
+            </Anchor>
 
-      <Container size="xl">
-        <Flex 
-          justify="space-between" 
-          align="center" 
-          p={{ base: 'sm', sm: 'md' }}
-        >
-          <Title 
-            order={2} 
-            fw={800} 
-            fz={{ base: 24, sm: 32 }} // Taille de police adaptative
-            style={{ letterSpacing: "-1px" }}
-          >
-            A<span style={{ color: "#364FC7" }}>MIKY</span>
-          </Title>
-          
-          <Flex 
-            gap={{ base: 'xs', sm: 'sm' }} 
-            align="center"
-          >
-            <ThemeToggle />
-            <Button size="xs" variant="filled" onClick={() => router.push('/auth/login')}>
-              Login
-            </Button>
-            <Button size="xs" variant="outline" onClick={() => router.push('/auth/register')}>
-              Signup
-            </Button>
+            <Group gap="sm">
+              <ThemeToggle />
+              {!mobile && (
+                <>
+                  <Button variant="subtle" color="indigo" onClick={() => router.push('/auth/login')}>Connexion</Button>
+                  <Button radius="xl" color="indigo" onClick={() => router.push('/auth/register')}>Rejoindre</Button>
+                </>
+              )}
+            </Group>
           </Flex>
-        </Flex>
-      </Container>
-
-      {/*Hero*/}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        
-        <Container 
-          fluid 
-          style={{ 
-            backgroundImage: 'url(/fond.avif)',
-            backgroundSize: "cover",
-            backgroundPosition: "center"
-          }} 
-          c="white" 
-          py={{ base: 80, md: 150 }} // Padding vertical équilibré
-          px={{ base: 20, md: 50 }}
-        >
-          <Stack align="center" gap="md">
-            <Title 
-              order={1} 
-              style={{ 
-                fontSize: mobile ? '2.2rem' : '3.5rem',
-                textAlign: 'center',
-                lineHeight: 1.2 
-              }}
-            >
-              Partagez, <span style={{ color: "#caaaf1" }}>échangez,</span>
-              <br style={{ display: mobile ? 'none' : 'block' }} /> 
-              <span style={{ color: "#bdc2de" }}> connectez-vous</span>
-            </Title>
-            <Text 
-              size="lg" 
-              fz={{ base: 'md', sm: 'xl' }} 
-              style={{ maxWidth: 800, textAlign: 'center' }}
-            >
-              Retrouvez vos amis et partagez vos passions dans une plateforme moderne.
-            </Text>
-            <Button 
-              size="sm"
-              radius="md"
-              onClick={() => router.push('/auth/login')}
-            >
-              Commencer maintenant
-            </Button>
-          </Stack>
         </Container>
-      </motion.div>
-      {/**/}
+      </AppShell.Header>
 
-      {/*Mes compétences*/}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <Container size="lg" my={70}>
-          <Group justify="center">
-            <Badge variant="filled" size="lg" p="md">
-              De quoi s'agit-il ?
-            </Badge>
-          </Group>
-
-          <Title order={2} ta="center" mt="sm">
-            Application de Messagerie Instantanée Moderne
-          </Title>
-
-          <Text c="dimmed" ta="center" mt="md">
-            Une plateforme de chat intuitive permettant de communiquer facilement avec vos amis en temps réel.
-Grâce à ma maîtrise des technologies modernes, je conçois et développe des applications rapides, sécurisées et parfaitement intégrées, capables de s’adapter à tout type de projet ou d’environnement professionnel.
-          </Text>
+      <AppShell.Main>
+        {/* HERO SECTION - Indigo Gradient Style */}
+        <Box 
+          pos="relative" 
+          style={{ 
+            minHeight: '90vh', 
+            display: 'flex', 
+            alignItems: 'center',
+            backgroundImage: 'url(/fond.avif)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        >
+          <Overlay color="#000" opacity={0.6} zIndex={1} />
           
-          
-          <SimpleGrid 
-            cols={{ base: 1, sm: 2, md: 3 }} 
-            spacing={{ base: 'md', md: 'xl' }} 
-            verticalSpacing={{ base: 'md', md: 'xl' }}
-            mt={50}
-          >
+          <Container size="md" pos="relative" style={{ zIndex: 2 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <Stack align="center" gap="xl">
+                <Badge variant="filled" color="indigo.6" size="lg" radius="lg">
+                  AMIKY
+                </Badge>
+                
+                <Title 
+                  order={1} 
+                  ta="center" 
+                  c="white"
+                  style={{ fontSize: mobile ? rem(42) : rem(72), fontWeight: 900, lineHeight: 1.1 }}
+                >
+                  Partagez. <Text component="span" variant="gradient" gradient={{ from: '#b197fc', to: '#63e6be', deg: 45 }} inherit > Échangez.</Text> Connectez.
+                </Title>
+
+                <Text size="xl" c="gray.3" ta="center" maw={600}>
+                  La plateforme de messagerie moderne qui rapproche les gens, en toute sécurité.
+                </Text>
+
+                <Group mt="lg">
+                  <Button 
+                    size="md"
+                    radius="xl" 
+                    color="indigo"
+                    rightSection={<ArrowRight size={20} />}
+                    onClick={() => router.push('/auth/login')}
+                  >
+                    Commencer l'expérience
+                  </Button>
+                </Group>
+              </Stack>
+            </motion.div>
+          </Container>
+        </Box>
+
+        <Container size="lg" py={100}>
+          <Stack align="center" mb={60}>
+            <Title order={2} fz={rem(36)} fw={800} c="indigo">Une expérience repensée</Title>
+            <Text c="dimmed" ta="center" maw={600}>
+              Une architecture robuste pour une communication fluide, quel que soit votre appareil.
+            </Text>
+          </Stack>
+
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
             {skillsData.map((item, i) => (
-              <Card key={i} shadow="sm" padding="lg" radius="md" withBorder>
-                <ThemeIcon variant="light" size={48} color={item.color} radius="md">
+              <Card 
+                key={i} 
+                p="xl" 
+                radius="lg" 
+                withBorder 
+                styles={{ root: cardHoverStyle }}
+              >
+                <ThemeIcon 
+                  variant="light" 
+                  size={54} 
+                  color={item.color} 
+                  radius="md" 
+                  mb="lg"
+                >
                   {item.icon}
                 </ThemeIcon>
-                <Text fw={700} mt="md" fz="lg">{item.category}</Text>
-                <Text lh={1.6} c="dimmed" fz="sm" mt="xs">
+                <Text fw={700} fz="lg" mb="sm">{item.category}</Text>
+                <Text fz="sm" c="dimmed" lh={1.6}>
                   {item.description}
                 </Text>
               </Card>
             ))}
           </SimpleGrid>
-
         </Container>
-      </motion.div>
 
-      {/*Carousel*/}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <Container fluid my={70}>
-          <Carousel
-            slideSize={{ base: '90%', md: '33.33%', sm: "50%" }}
-            withIndicators
-            orientation="horizontal"
-            height={400}
-            emblaOptions={{
-              align: 'start',
-              axis: 'x',
-              slidesToScroll: 1,
+        <Box bg={computedColorScheme === 'dark' ? 'dark.8' : 'gray.0'} py={80}>
+          <Container size="xl">
+              <Carousel
+                slideSize={{ base: '90%', md: '33.33%', sm: "50%" }}
+                withIndicators
+                orientation="horizontal"
+                emblaOptions={{
+                  align: 'start',
+                  axis: 'x',
+                  slidesToScroll: 1,
+                }}
+              >
+              {data.map((item, index) => (
+              <Carousel.Slide key={index}>
+                <Card
+                  radius="lg"
+                  shadow="md"
+                  p="xl"
+                  style={{
+                    height: 400,
+                    backgroundImage: `url(${item.image})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    border: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                  component={motion.div}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Overlay
+                    gradient="linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.85) 90%)"
+                    opacity={1}
+                    zIndex={0}
+                  />
+
+                  <Box pos="relative" style={{ zIndex: 1 }}>
+                    <Badge variant="filled" color="indigo.5" mb="sm" radius="sm">
+                      {item.category}
+                    </Badge>
+                    <Title order={3} c="white" fz="xl" fw={700} lh={1.2}>
+                      {item.title}
+                    </Title>
+                  </Box>
+                </Card>
+              </Carousel.Slide>
+              ))}
+            </Carousel>
+          </Container>
+        </Box>
+
+        {/* CTA SECTION - Indigo Light Theme */}
+        <Container size="lg" my={100}>
+          <Paper
+            radius="lg"
+            p={{ base: 'xl', md: 50 }}
+            withBorder
+            style={{
+              background: computedColorScheme === 'dark' 
+                ? 'rgba(60, 64, 198, 0.1)' 
+                : 'var(--mantine-color-indigo-light)',
+              textAlign: 'center',
+              overflow: 'hidden',
+              position: 'relative',
+              borderColor: 'var(--mantine-color-indigo-light)'
             }}
           >
-            {data.map((item, index) => (
-              <Carousel.Slide key={index}>
-                <Paper
-                  shadow="md"
-                  radius="md"
-                  p="md"
-                  withBorder
-                  style={{
-                    backgroundImage: `url(${item.image})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                    height: 365,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <Badge variant="dark">{item.category}</Badge>
-
-                  <Title order={3} mt="xs" c="white">
-                    {item.title}
-                  </Title>
-                </Paper>
-              </Carousel.Slide>
-            ))}
-          </Carousel>
-
+            <Stack align="center" gap="md">
+              <Title order={2} fz={{ base: 28, md: 38 }} fw={900} c="indigo">
+                Prêt à rejoindre l'aventure Amiky ?
+              </Title>
+              <Text c="dimmed" fz="lg" maw={600}>
+                Créez votre compte en moins de 2 minutes et commencez à échanger avec votre communauté.
+              </Text>
+              <Group mt="lg">
+                <Button size="md" radius="xl" color="indigo" onClick={() => router.push('/auth/register')}>
+                  Créer un compte gratuit
+                </Button>
+                <Button size="md" radius="xl" variant="outline" color="indigo" onClick={() => router.push('/auth/login')}>
+                  Connectez-vous
+                </Button>
+              </Group>
+            </Stack>
+          </Paper>
         </Container>
-      </motion.div>
 
-      <Footer />
-    </main>
-    );
-
+        <Footer />
+      </AppShell.Main>
+    </AppShell>
+  );
 }

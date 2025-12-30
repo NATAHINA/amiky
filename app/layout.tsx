@@ -22,23 +22,27 @@ export const metadata: Metadata = {
     default: "Amiky",
     template: "%s | Amiky - Chat en temps réel",
   },
+  icons: {
+    icon: "/amiky_chat.svg",
+    apple: "/amiky_chat.svg",
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Amiky",
   },
   description: "Plateforme de communication intuitive",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+
+export default function RootLayout({ children }: { children: any }) {
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-        <ColorSchemeScript defaultColorScheme="auto"/>
+        <ColorSchemeScript defaultColorScheme="auto" />
       </head>
       <body>
-        <MantineProvider theme={theme} defaultColorScheme="auto">
+        <MantineProvider defaultColorScheme="auto">
           {children}
         </MantineProvider>
       </body>

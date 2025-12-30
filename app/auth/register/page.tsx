@@ -1,27 +1,17 @@
 
-
 "use client";
 
-import '@mantine/core/styles.css';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { motion } from "framer-motion";
 import {
-  Container,
-  Paper,
-  TextInput,
-  PasswordInput,
-  Button,
-  Title,
-  Text,
-  Stack,
-  Flex,
-  Anchor,
-  Alert,
-  Box,
-  rem // Utilitaire pour convertir les pixels en rem
+  Container, Paper, TextInput, PasswordInput, Button, Text, Stack, Flex,
+  Anchor, Alert, Box, rem, useMantineTheme, useComputedColorScheme,
+  Center, Grid, Image as MantineImage, Title
 } from "@mantine/core";
 import Link from 'next/link';
+import { User, Mail, Lock, ArrowLeft, ShieldCheck } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -31,17 +21,19 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [mounted, setMounted] = useState(false);
+
+  const theme = useMantineTheme();
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = computedColorScheme === 'dark';
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSignup = async () => {
     setLoading(true);
     setMessage("");
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setMessage("Veuillez entrer une adresse email valide.");
-      setLoading(false);
-      return;
-    }
 
     if (password !== confirmPassword) {
       setMessage("Les mots de passe ne correspondent pas !");
@@ -60,139 +52,202 @@ export default function SignupPage() {
       return;
     }
 
-    const user = data.user;
-    if (!user) {
-      setMessage("Erreur lors de la création du compte.");
-      setLoading(false);
-      return;
-    }
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert([
-        {
-          id: user.id,
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert([{
+          id: data.user.id,
           email: email,
           username: name,
           avatar_url: null,
-          created_at: new Date(),
-        },
-      ]);
+          created_at: new Date().toISOString(),
+        }]);
 
-    if (profileError) {
-      setMessage("Compte créé, mais erreur lors de la création du profil.");
-      setLoading(false);
-      return;
+      if (profileError) {
+        setMessage("Compte créé, mais erreur de profil.");
+      } else {
+        setMessage("Succès ! Redirection en cours ...");
+        setTimeout(() => router.push("/posts"), 2000);
+      }
     }
-
-    setMessage("Votre compte a été créé avec succès !");
     setLoading(false);
-    setTimeout(() => router.push("/auth/login"), 3000);
   };
 
+  if (!mounted) return null;
+
   return (
-    <Flex
-      justify="center"
-      align="center"
-      direction="column"
-      p="sm"
-      style={{ minHeight: "100vh" }}
+    <Box 
+      style={{ 
+        minHeight: "100vh", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center",
+        backgroundColor: isDark ? theme.colors.dark[8] : theme.colors.gray[0],
+        backgroundImage: isDark 
+          ? 'radial-gradient(circle at 50% -20%, #1a1b1e 0%, #000 100%)' 
+          : 'radial-gradient(circle at 50% -20%, #f8f9fa 0%, #e9ecef 100%)'
+      }}
     >
-      <Container size="xs" w="100%" p={0}>
-        <Paper 
-          withBorder 
-          shadow="md" 
-          p={{ base: 20, sm: 35 }}
-          radius="md"
-          w="100%"
-          maw={450}
-          mx="auto"
-        >
-          <Title 
-            mb={15} 
-            ta="center" 
-            order={2} 
-            fw={800} 
-            fz={{ base: 24, sm: 32 }} 
-            style={{ letterSpacing: "-1px" }}
-          >
-            A<span style={{ color: "var(--mantine-color-indigo-7)" }}>MIKY</span>
-          </Title>
+      <Container size="xl" w="100%" p="md">
+         <Grid gutter={50} align="center" justify="center" p="sm">
           
-          <Text c="dimmed" size="sm" ta="center" mt={5} mb={30}>
-            Créez votre compte
-          </Text>
+          {/* Section visuelle à gauche */}
+          <Grid.Col span={{ base: 12, xs: 10, sm: 8, md: 6 }} visibleFrom="md"> 
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8 }}
+            >
+              <Stack gap="xl">
+                <Box>
+                  <Title order={1} fw={900} fz={rem(48)} lh={1.1} mb="md">
+                    Commencez votre <br />
+                    <Text component="span" variant="gradient" gradient={{ from: 'indigo.4', to: 'violet.4', deg: 45 }} inherit>
+                      histoire ici.
+                    </Text>
+                  </Title>
+                  <Text fz="lg" c="dimmed" maw={450}>
+                    Rejoignez des milliers d'utilisateurs et profitez d'un espace d'échange sécurisé et moderne.
+                  </Text>
+                </Box>
 
-          <Box component="form" onSubmit={(e) => { e.preventDefault(); handleSignup(); }} >
-            <Stack gap="md">
-              <TextInput
-                label="Pseudo"
-                placeholder="Votre pseudo"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-              <TextInput
-                label="Email"
-                placeholder="exemple@mail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <PasswordInput
-                label="Mot de passe"
-                placeholder="********"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <PasswordInput
-                label="Confirmation"
-                placeholder="********"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
+                <MantineImage
+                  src="/signup.svg"
+                  alt="Inscription"
+                  style={{ 
+                    filter: 'drop-shadow(0px 20px 40px rgba(0,0,0,0.1))',
+                    maxWidth: '80%'
+                  }}
+                />
+              </Stack>
+            </motion.div>
+          </Grid.Col>
 
-              <Text c="dimmed" size="sm" ta="center" mt={5}>
-                Déjà un compte ?{' '}
-                <Anchor component={Link} href="/auth/login" fw={500}>
-                  Connectez-vous
-                </Anchor>
-              </Text>
-
-              {message && (
-                <Alert 
-                  variant="light" 
-                  color={message.includes("succès") ? "teal" : "red"} 
-                  py="xs"
-                >
-                  {message}
-                </Alert>
-              )}
-
-              <Button 
-                fullWidth 
-                mt="md" 
-                type="submit"
-                loading={loading}
+          {/* Formulaire à droite */}
+          <Grid.Col span={{ base: 12, xs: 10, sm: 8, md: 6 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Paper 
+                withBorder 
+                shadow="xl" 
+                p={{ base: 30, sm: 40 }} 
+                radius="xl"
+                style={{
+                  backdropFilter: 'blur(8px)',
+                  backgroundColor: isDark ? 'rgba(26, 27, 30, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+                }}
               >
-                S'inscrire
-              </Button>
+                <Center mb={0}>
+                  <img 
+                    src="/amiky_chat.svg" 
+                    alt="Amiky" 
+                    style={{ 
+                      height: rem(80),
+                      filter: isDark ? 'brightness(2.2)' : 'none'
+                    }} 
+                  />
+                </Center>
 
-              <Anchor 
-                component={Link} 
-                href="/" 
-                size="xs" 
-                ta="center" 
-                display="block"
-              >
-                ← Retour à l'accueil
-              </Anchor>
-            </Stack>
-          </Box>
-        </Paper>
+                <Title order={2} ta="center" fz="xl" fw={700} mb={5}>Créer un compte</Title>
+                <Text c="dimmed" fz="sm" ta="center" mb="xl">L'aventure commence en quelques clics</Text>
+
+                <Stack gap="sm">
+                  <TextInput 
+                    label="Pseudo" 
+                    placeholder="Votre nom d'utilisateur" 
+                    leftSection={<User size={16} />}
+                    radius="md"
+                    size="md"
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)} 
+                    required 
+                  />
+                  
+                  <TextInput 
+                    label="Email" 
+                    placeholder="nom@exemple.com" 
+                    leftSection={<Mail size={16} />}
+                    radius="md"
+                    size="md"
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    required 
+                  />
+
+                  <PasswordInput 
+                    label="Mot de passe" 
+                    placeholder="8 caractères minimum" 
+                    leftSection={<Lock size={16} />}
+                    radius="md"
+                    size="md"
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    required 
+                  />
+
+                  <PasswordInput 
+                    label="Confirmer le mot de passe" 
+                    placeholder="••••••••" 
+                    leftSection={<ShieldCheck size={16} />}
+                    radius="md"
+                    size="md"
+                    value={confirmPassword} 
+                    onChange={(e) => setConfirmPassword(e.target.value)} 
+                    required 
+                  />
+
+                  {message && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <Alert 
+                        color={message.includes("Succès") ? "teal" : "red"} 
+                        radius="md"
+                        variant="light"
+                      >
+                        {message}
+                      </Alert>
+                    </motion.div>
+                  )}
+
+                  <Button 
+                    fullWidth 
+                    size="md" 
+                    radius="md" 
+                    onClick={handleSignup} 
+                    loading={loading} 
+                    color="indigo" 
+                    mt="md"
+                    style={{ boxShadow: theme.shadows.md }}
+                  >
+                    Créer mon compte
+                  </Button>
+
+                  <Flex justify="center" gap={5} mt="xs">
+                    <Text fz="sm">Déjà membre ?</Text>
+                    <Anchor component={Link} href="/auth/login" size="sm" fw={700} c="indigo">
+                      Se connecter
+                    </Anchor>
+                  </Flex>
+
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    size="xs"
+                    leftSection={<ArrowLeft size={14} />}
+                    component={Link}
+                    href="/"
+                    mt="sm"
+                  >
+                    Retour à l'accueil
+                  </Button>
+                </Stack>
+              </Paper>
+            </motion.div>
+          </Grid.Col>
+        </Grid>
       </Container>
-    </Flex>
+    </Box>
   );
 }

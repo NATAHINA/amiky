@@ -6,7 +6,6 @@ import {
   Container,
   Group,
   Box,
-  Title,
   Anchor,
   Flex,
   Menu,
@@ -14,13 +13,13 @@ import {
   Text,
   useMantineTheme,
   Indicator,
-  rem
+  rem,
+  useComputedColorScheme // Importez ceci
 } from "@mantine/core";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useMediaQuery } from "@mantine/hooks";
 import { usePathname, useRouter } from "next/navigation";
-import { smoothScrollTo } from "@/utils/smoothScroll";
 import { House, Users, MessageCircle, ChevronDown, LogOut, UserCircle } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { signOut } from "@/utils/auth";
@@ -34,6 +33,9 @@ export default function Navbar() {
   const { user, profile } = useUser();
   const router = useRouter();
   const theme = useMantineTheme();
+  
+  // Utilisation correcte pour Mantine 7+
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
 
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [currentProfile, setCurrentProfile] = useState(profile);
@@ -64,7 +66,6 @@ export default function Navbar() {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
-  // Sync profile when it changes
   useEffect(() => {
     if (profile) setCurrentProfile(profile);
   }, [profile]);
@@ -75,7 +76,6 @@ export default function Navbar() {
     { label: "Messages", icon: MessageCircle, href: "/chat", isMessage: true },
   ];
 
-  // --- Composants réutilisables ---
   const NavItems = () => (
     <>
       {navLinks.map((link) => {
@@ -110,6 +110,8 @@ export default function Navbar() {
       })}
     </>
   );
+
+
 
   const UserMenu = () => (
     <Menu shadow="md" width={220} position="bottom-end" transitionProps={{ transition: 'pop-top-right' }}>
@@ -164,27 +166,24 @@ export default function Navbar() {
           <Group justify="space-between" h="100%">
             
             <Anchor component={Link} href="/" underline="never">
-                <img 
-                  src="/amiky_chat.png" 
-                  alt="Amiky Logo" 
-                  style={{ 
-                    height: rem(75), // Ajustez la taille selon vos besoins
-                    width: "auto",
-                    display: "block"
-                  }} 
-                  loading="lazy"
-                />
+              <img 
+                src="/amiky_chat.svg" 
+                alt="Amiky Logo" 
+                style={{ 
+                  height: rem(75),
+                  width: "auto",
+                  display: "block",
+                  filter: computedColorScheme === 'dark' ? 'contrast(0.9) brightness(2.2)' : 'none'
+                }} 
+              />
             </Anchor>
 
-            {/* Desktop Navigation */}
             {!isMobile && (
-
               <Group gap={30}>
                 <NavItems />
               </Group>
             )}
 
-            {/* Actions (Always top right) */}
             <Group gap="sm">
               <NotificationsMenu />
               <ThemeToggle />
@@ -201,9 +200,9 @@ export default function Navbar() {
             bottom: 0,
             left: 0,
             right: 0,
-            height: rem(50),
-            backgroundColor: "white",
-            borderTop: `${rem(1)} solid ${theme.colors.gray[2]}`,
+            height: rem(60),
+            backgroundColor: "var(--mantine-color-body)",
+            borderTop: `${rem(1)} solid var(--mantine-color-default-border)`,
             zIndex: 1000,
             paddingBottom: "env(safe-area-inset-bottom)",
           }}
