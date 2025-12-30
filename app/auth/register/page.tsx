@@ -133,7 +133,7 @@ export default function SignupPage() {
               <Paper 
                 withBorder 
                 shadow="xl" 
-                p={{ base: 30, sm: 40 }} 
+                p={{ base: 20, sm: 30 }} 
                 radius="xl"
                 style={{
                   backdropFilter: 'blur(8px)',

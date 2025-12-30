@@ -152,8 +152,8 @@ export default function FriendsContent() {
                 {currentUserId && <Invitations currentUserId={currentUserId} />}
               </Card>
 
-              <Card shadow="sm" padding="md" withBorder radius="md">
-                <Group justify="space-between" mb="md">
+              <Card shadow="sm" padding="sm" withBorder radius="md">
+                <Stack gap="sm">
                   <Text fz="sm" fw={700} c="indigo.7" style={{ textTransform: 'uppercase' }}>
                     Suggestions
                   </Text>
@@ -165,7 +165,7 @@ export default function FriendsContent() {
                     onChange={(e) => setSearchSuggest(e.currentTarget.value)}
                     style={{ flex: 1, maxWidth: 250 }}
                   />
-                </Group>
+                </Stack>
                 
                 {currentUserId && (
                   <SuggestionsList
@@ -179,7 +179,7 @@ export default function FriendsContent() {
 
           {/* SECTION LISTE D'AMIS - À gauche sur desktop, en dessous sur mobile */}
           <Grid.Col span={{ base: 12, md: 4 }} order={{ base: 2, md: 1 }}>
-            <Card shadow="sm" padding="md" withBorder radius="md" style={{ height: '100%' }}>
+            <Card shadow="sm" padding="sm" withBorder radius="md" style={{ height: '100%' }}>
               <Stack gap="sm">
                 <Text fz="sm" fw={700} c="indigo.7" style={{ textTransform: 'uppercase' }}>
                   Ma liste d'amis

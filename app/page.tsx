@@ -5,12 +5,12 @@
 import {
   Container, Group, Title, Button, Text, Stack, ThemeIcon, useMantineTheme,
   useComputedColorScheme, AppShell, Badge, Card, SimpleGrid, Flex, Anchor, rem,
-  Box, Overlay, Paper
+  Box, Overlay, Paper, List, Avatar
 } from "@mantine/core";
 import { useMediaQuery, useWindowScroll } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { motion } from "framer-motion";
-import { Users, MessageSquare, Bell, Image as ImageIcon, ArrowRight } from "lucide-react";
+import { Users, MessageSquare, Bell, Image as ImageIcon, ArrowRight, Share2, ShieldCheck, Heart, Zap, MessageCircle } from "lucide-react";
 import { Carousel } from '@mantine/carousel';
 import '@mantine/core/styles.css';
 import '@mantine/carousel/styles.css';
@@ -151,7 +151,7 @@ export default function Home() {
             </Text>
           </Stack>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg" mb="lg">
             {skillsData.map((item, i) => (
               <Card 
                 key={i} 
@@ -176,12 +176,60 @@ export default function Home() {
               </Card>
             ))}
           </SimpleGrid>
+
+          {/* Section détaillée "Notre Mission" */}
+        <Paper radius="lg" p={{ base: 'md', sm: 40 }} mt="xl" bg={computedColorScheme === 'dark' ? 'dark.8' : 'gray.0'}>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={40}>
+            <Stack justify="center">
+              <Title order={2}>Notre Mission</Title>
+              <Text fz="md" style={{ lineHeight: 1.7 }}>
+                Amiky est né de l'idée que les réseaux sociaux doivent revenir à l'essentiel : 
+                **la connexion humaine**. Nous avons conçu une interface épurée, sans algorithmes 
+                complexes qui dictent ce que vous devez voir. 
+              </Text>
+              <List
+                spacing="sm"
+                size="sm"
+                center
+                icon={
+                  <ThemeIcon color="cyan" size={20} radius="xl">
+                    <Share2 size={12} />
+                  </ThemeIcon>
+                }
+              >
+                <List.Item>Transparence totale des échanges</List.Item>
+                <List.Item>Valorisation de la qualité sur la quantité</List.Item>
+                <List.Item>Interface pensée pour le bien-être numérique</List.Item>
+              </List>
+            </Stack>
+
+            <Box style={{ position: 'relative' }}>
+              <Paper withBorder shadow="md" p="md" radius="md">
+                <Group mb="sm">
+                  <Avatar color="cyan" radius="xl">A</Avatar>
+                  <Box>
+                    <Text fw={500} size="sm">L'équipe Amiky</Text>
+                    <Text size="xs" c="dimmed">Posté aujourd'hui</Text>
+                  </Box>
+                </Group>
+                <Text fz="sm">
+                  "Nous avons créé Amiky pour offrir un espace où chacun peut s'exprimer librement, 
+                  sans la pression de la perfection."
+                </Text>
+                <Group gap="xs" mt="md">
+                   <Heart size={14} color="red" fill="red" />
+                   <MessageCircle size={14} />
+                </Group>
+              </Paper>
+            </Box>
+          </SimpleGrid>
+        </Paper>
         </Container>
 
         <Box bg={computedColorScheme === 'dark' ? 'dark.8' : 'gray.0'} py={80}>
           <Container size="xl">
               <Carousel
-                slideSize={{ base: '90%', md: '33.33%', sm: "50%" }}
+                slideSize={{ base: '100%', md: '33.33%', sm: "50%" }}
                 withIndicators
                 orientation="horizontal"
                 emblaOptions={{
@@ -258,9 +306,6 @@ export default function Home() {
               <Group mt="lg">
                 <Button size="md" radius="xl" color="indigo" onClick={() => router.push('/auth/register')}>
                   Créer un compte gratuit
-                </Button>
-                <Button size="md" radius="xl" variant="outline" color="indigo" onClick={() => router.push('/auth/login')}>
-                  Connectez-vous
                 </Button>
               </Group>
             </Stack>

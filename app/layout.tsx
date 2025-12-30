@@ -4,6 +4,7 @@ import { MantineProvider, ColorSchemeScript } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
 import "@mantine/notifications/styles.css";
+import { Analytics } from "@vercel/analytics/next"
 
 import type { Metadata, Viewport } from "next";
 import { theme } from "../theme";
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: any }) {
       </head>
       <body>
         <MantineProvider defaultColorScheme="auto">
+          <Analytics/>
           {children}
         </MantineProvider>
       </body>

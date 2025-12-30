@@ -129,7 +129,7 @@ export default function LoginPage() {
               <Paper 
                 withBorder 
                 shadow="xl" 
-                p={40} 
+                p={{ base: 20, sm: 30 }}
                 radius="xl"
                 style={{
                   backdropFilter: 'blur(8px)',

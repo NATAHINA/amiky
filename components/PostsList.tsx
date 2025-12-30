@@ -8,7 +8,7 @@ import {
   Center, Text, Card, Stack, Loader, Grid, Button, Group, ActionIcon, Avatar, TextInput,
   Modal, Textarea, Flex, Drawer, Divider, Image, SimpleGrid, Box, Paper, FileInput
 } from "@mantine/core";
-import { ChevronRight, Heart, MessageCircle, Plus, Eye, Users, X } from "lucide-react";
+import { ChevronRight, Heart, MessageCircle, Plus, Eye, Users, X, Smile } from "lucide-react";
 import { useRouter } from "next/navigation";
 import PostMediaGrid from "@components/PostMediaGrid";
 import Picker from "emoji-picker-react";
@@ -31,7 +31,6 @@ interface Post {
   content: string;
   author_id: string;
   created_at: string;
-  // profiles: Profile[];
   profiles: Profile | null;
   likes_count: number;
   comments_count: number;
@@ -175,12 +174,15 @@ export default function PostsList() {
         )
       );
 
-      await supabase.from("notifications").insert({
-        user_id: post.author_id,
-        from_user: user.id,
-        type: "like",
-        post_id: postId
-      });
+      if (post.author_id && post.author_id !== user.id) {
+
+        await supabase.from("notifications").insert({
+          user_id: post.author_id,
+          from_user: user.id,
+          type: "like",
+          post_id: postId
+        });
+      }
     }
   };
 
@@ -363,7 +365,7 @@ export default function PostsList() {
       />
 
       <SimpleGrid 
-        cols={{ base: 1, sm: 2, lg: 3 }} 
+        cols={{ base: 1, lg: 2}} 
         spacing="md" 
         verticalSpacing="md"
       >
@@ -480,51 +482,54 @@ export default function PostsList() {
         yOffset={modalOffset}
       >
         <Stack gap="md">
-          <div style={{ position: 'relative' }}>
-            <Textarea
-                placeholder="Votre contenu..."
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.currentTarget.value)}
-                minRows={6}
-                styles={{
-                  input: {
-                    resize: 'both',
-                  },
-                }}
-              />
+          <Group gap="xs" align="flex-end" wrap="nowrap">
+          <ActionIcon 
+            onClick={() => setShowEmojiPicker(v => !v)} 
+            variant="light" 
+            size="lg" 
+            radius="xl"
+            color={showEmojiPicker ? "indigo" : "gray"}
+          >
+            <Smile size={20} />
+          </ActionIcon>
 
-            <Group justify="flex-end" mt={5}>
-              <ActionIcon 
-                onClick={() => setShowEmojiPicker((v) => !v)} 
-                size="lg" 
-                variant="subtle"
-                title="Ajouter un emoji"
-              >
-                😊
-              </ActionIcon>
-            </Group>
-          </div>
+          <Textarea
+            value={newPostContent}
+            onChange={(e) => setNewPostContent(e.currentTarget.value)}
+            placeholder="Votre contenu..."
+            autosize
+            minRows={10}
+            style={{ flex: 1 }}
+            radius="md"
+          />
+        </Group>
+          
 
           {showEmojiPicker && (
-          <Paper withBorder shadow="md" p="xs" radius="md" style={{ zIndex: 10 }}>
-            <Group justify="space-between" mb="xs">
-              <Text fz="xs" fw={500} c="dimmed">Choisir un emoji</Text>
-              <ActionIcon size="xs" variant="subtle" onClick={() => setShowEmojiPicker(false)}>
-                ✕
-              </ActionIcon>
-            </Group>
-            
-            <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <Paper 
+              withBorder 
+              shadow="xl" 
+              p={0}
+              style={{
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              <Group justify="space-between" p="xs" bg="var(--mantine-color-gray-0)">
+                <Box fz="xs" fw={700} c="dimmed">Choisir un emoji</Box>
+                <ActionIcon size="sm" variant="subtle" onClick={() => setShowEmojiPicker(false)}>
+                  <X size={14} />
+                </ActionIcon>
+              </Group>
               <Picker 
-                onEmojiClick={onEmojiClick} 
+                onEmojiClick={(emoji) => onEmojiClick(emoji)} 
                 width="100%" 
-                height={350}
-                skinTonesDisabled
+                height={300}
                 previewConfig={{ showPreview: false }}
               />
-            </div>
-          </Paper>
-        )}
+            </Paper>
+          )}
 
           <FileInput
             label="Ajouter des photos"
