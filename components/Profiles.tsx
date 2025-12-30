@@ -1169,7 +1169,7 @@ useEffect(() => {
                       alt={`Media ${i}`}
                       radius="sm"
                       fit="cover"
-                      style={{ height: 300, cursor: 'pointer' }} 
+                      style={{ height: auto, cursor: 'pointer' }} 
                       loading="lazy"
                       onClick={() => {
                         setSelectedImage(url);
