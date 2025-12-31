@@ -8,6 +8,7 @@ import {
 import Picker from "emoji-picker-react";
 import Link from "next/link";
 import { SendHorizontal, Smile, X, EllipsisVertical, Pencil } from "lucide-react";
+import { notifications } from '@mantine/notifications';
 
 interface Profile {
   id: string;
@@ -78,8 +79,35 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
   }, []);
 
 
+  const checkContentModeration = async (text: string) => {
+    try {
+      const response = await fetch('/api/ai/analyze-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await response.json();
+      return data.result === "BLOCKED"; // Retourne true si c'est insultant
+    } catch (error) {
+      console.error("Erreur modération:", error);
+      return false; // En cas de bug, on laisse passer pour ne pas bloquer l'utilisateur
+    }
+  };
+
   const sendComment = async () => {
     if (!content.trim()) return;
+
+    const isBad = await checkContentModeration(content);
+
+    if (isBad) {
+      notifications.show({
+        title: 'Message bloqué',
+        message: 'Veuillez respecter les règles de la communauté 🛡️',
+        color: 'red',
+        autoClose: 5000,
+      });
+      return;
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;

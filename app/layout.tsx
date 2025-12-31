@@ -4,7 +4,10 @@ import { MantineProvider, ColorSchemeScript } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
 import "@mantine/notifications/styles.css";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import AIChatbot from '@/components/AIChatbot';
+import { Notifications } from '@mantine/notifications';
 
 import type { Metadata, Viewport } from "next";
 import { theme } from "../theme";
@@ -45,7 +48,10 @@ export default function RootLayout({ children }: { children: any }) {
       <body>
         <MantineProvider defaultColorScheme="auto">
           <Analytics/>
+          <SpeedInsights/>
+          <Notifications />
           {children}
+          <AIChatbot />
         </MantineProvider>
       </body>
     </html>

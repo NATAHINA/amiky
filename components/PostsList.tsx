@@ -17,6 +17,7 @@ import DOMPurify from "dompurify";
 
 import { useMediaQuery } from '@mantine/hooks';
 import { useMantineTheme } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 
 type Profile = {
   id: string;
@@ -196,12 +197,38 @@ export default function PostsList() {
     router.push(`/posts/${postId}`);
   };
 
+  const checkContentModeration = async (text: string) => {
+    try {
+      const response = await fetch('/api/ai/analyze-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await response.json();
+      return data.result === "BLOCKED"; // Retourne true si c'est insultant
+    } catch (error) {
+      console.error("Erreur modération:", error);
+      return false; // En cas de bug, on laisse passer pour ne pas bloquer l'utilisateur
+    }
+  };
 
   // Create post
   const handleCreatePost = async () => {
     if (!currentUser) return alert("Vous devez être connecté");
 
     let media_urls: string[] = [];
+
+    const isBad = await checkContentModeration(newPostContent);
+  
+    if (isBad) {
+      notifications.show({
+        title: 'Message bloqué',
+        message: 'Veuillez respecter les règles de la communauté 🛡️',
+        color: 'red',
+        autoClose: 5000,
+      });
+      return;
+    }
 
     if (newPostMedia.length > 0) {
       for (const file of newPostMedia) {
@@ -243,6 +270,7 @@ export default function PostsList() {
     setNewPostContent("");
     setNewPostMedia([]);
     fetchPosts();
+
   };
 
 
