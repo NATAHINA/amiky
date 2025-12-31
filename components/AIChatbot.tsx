@@ -66,7 +66,7 @@ export default function AIChatbot() {
 
   return (
     <>
-      <Affix position={{ bottom: 40, right: 20 }}>
+      <Affix position={{ bottom: 50, right: 20 }}>
         <Transition transition="slide-up" mounted={opened}>
           {(transitionStyles) => (
             <Paper
@@ -125,7 +125,7 @@ export default function AIChatbot() {
         <Button
           radius="xl"
           size="md"
-          leftSection={opened ? <X size={20} /> : <MessageCircle size={20} />}
+          leftSection={opened ? <X size={18} /> : <MessageCircle size={20} />}
           onClick={() => setOpened((o) => !o)}
           variant="gradient"
           gradient={opened ? { from: 'gray', to: 'dark' } : { from: 'indigo', to: 'cyan' }}
