@@ -203,7 +203,6 @@ export default function PostsList() {
 
     let media_urls: string[] = [];
 
-    // Upload multiple files if any
     if (newPostMedia.length > 0) {
       for (const file of newPostMedia) {
         const fileExt = file.name.split(".").pop();
@@ -231,7 +230,7 @@ export default function PostsList() {
       content: newPostContent,
       media_urls: media_urls.length > 0 ? media_urls : null,
       author_id: currentUser.id,
-      created_at: new Date().toISOString()
+      created_at: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString()
     });
 
     if (error) {

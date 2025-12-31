@@ -165,6 +165,7 @@ export default function Chat({ conversation, onBack }: ChatProps) {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !userId) return;
+    const localISODate = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString();
 
     const messageText = newMessage.trim();
     setNewMessage("");
@@ -176,7 +177,7 @@ export default function Chat({ conversation, onBack }: ChatProps) {
       id: tempId,
       sender_id: userId,
       message: messageText,
-      created_at: new Date().toISOString(),
+      created_at: localISODate,
     };
 
     setMessages((prev) => [...prev, optimisticMsg]);
@@ -202,7 +203,8 @@ export default function Chat({ conversation, onBack }: ChatProps) {
         .insert([{ 
           conversation_id: activeConvId, 
           sender_id: userId, 
-          message: messageText 
+          message: messageText,
+          created_at: localISODate 
         }])
         .select()
         .single();
@@ -218,7 +220,7 @@ export default function Chat({ conversation, onBack }: ChatProps) {
       const receiverId = conversation.participants.find((id: string) => id !== userId);
       if (receiverId) {
         await supabase.from("notifications").insert([
-          { user_id: receiverId, from_user: userId, type: "message", conversation_id: activeConvId }
+          { user_id: receiverId, from_user: userId, type: "message", conversation_id: activeConvId, created_at: localISODate }
         ]);
       }
     } catch (error) {

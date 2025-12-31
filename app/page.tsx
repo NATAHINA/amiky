@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useState, useEffect } from 'react';
 import {
   Container, Group, Title, Button, Text, Stack, ThemeIcon, useMantineTheme,
   useComputedColorScheme, AppShell, Badge, Card, SimpleGrid, Flex, Anchor, rem,
@@ -10,7 +11,7 @@ import {
 import { useMediaQuery, useWindowScroll } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { motion } from "framer-motion";
-import { Users, MessageSquare, Bell, Image as ImageIcon, ArrowRight, Share2, ShieldCheck, Heart, Zap, MessageCircle } from "lucide-react";
+import { Users, MessageSquare, Bell, Image as ImageIcon, ArrowRight, Share2, ShieldCheck, Heart, Zap, MessageCircle, Download } from "lucide-react";
 import { Carousel } from '@mantine/carousel';
 import '@mantine/core/styles.css';
 import '@mantine/carousel/styles.css';
@@ -48,6 +49,30 @@ export default function Home() {
   const mobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const computedColorScheme = useComputedColorScheme('light');
   const [scroll] = useWindowScroll();
+
+  const [supportsPWA, setSupportsPWA] = useState(false);
+  const [promptInstall, setPromptInstall] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setSupportsPWA(true);
+      setPromptInstall(e);
+    };
+
+    // Écoute l'événement d'installation du navigateur
+    window.addEventListener("beforeinstallprompt", handler);
+
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const onClick = (e: any) => {
+    e.preventDefault();
+    if (!promptInstall) return;
+    promptInstall.prompt();
+  };
+
+  if (!supportsPWA) return null; // Ne rien afficher si déjà installé ou non supporté
 
   return (
     <AppShell
@@ -127,15 +152,26 @@ export default function Home() {
                   La plateforme de messagerie moderne qui rapproche les gens, en toute sécurité.
                 </Text>
 
-                <Group mt="lg">
+                <Group mt="lg" justify="center">
                   <Button 
                     size="md"
                     radius="xl" 
-                    color="indigo"
+                    variant="default"
                     rightSection={<ArrowRight size={20} />}
                     onClick={() => router.push('/auth/login')}
                   >
-                    Commencer l'expérience
+                    Commencer
+                  </Button>
+
+                  <Button
+                    size="md"
+                    leftSection={<Download size={16} />}
+                    variant="gradient"
+                    gradient={{ from: 'violet', to: 'indigo' }}
+                    radius="xl"
+                    onClick={onClick}
+                  >
+                    Installer
                   </Button>
                 </Group>
               </Stack>

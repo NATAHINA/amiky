@@ -138,12 +138,15 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
     const id = await getOrCreateConversation();
     if (!id) return;
 
+    const localISODate = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString();
+
     const { data: messageData, error: msgError } = await supabase
       .from("messages")
       .insert({
         conversation_id: id,
         sender_id: user.id,
         message: text.trim(),
+        created_at: localISODate,
       })
       .select()
       .single();
@@ -165,7 +168,8 @@ export default function PrivateChat({ otherUserId, conversationId, postId, onNew
             from_user: user.id,
             type: "message",
             conversation_id: id,
-            read: false
+            read: false,
+            created_at: localISODate,
           });
     }
   };

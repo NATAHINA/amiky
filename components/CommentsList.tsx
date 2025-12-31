@@ -84,12 +84,13 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const localISODate = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString();
+
     if (editingCommentId) {
       const { data, error } = await supabase
         .from("comments")
         .update({ content })
         .eq("id", editingCommentId)
-        // .select(`id, content, created_at, profiles:author_id (id, full_name, avatar_url, username)`)
         .select('*, profiles(*)')
         .single();
 
@@ -99,10 +100,9 @@ export default function CommentsList({postId, comments, setComments, onCommentAd
         setContent("");
       }
     } else {
-      // --- MODE INSERTION (votre code actuel) ---
       const { data, error } = await supabase
         .from("comments")
-        .insert({ post_id: postId, author_id: user.id, content })
+        .insert({ post_id: postId, author_id: user.id, content, created_at: localISODate })
         .select(`id, content, created_at, profiles:author_id (id, full_name, avatar_url, username)`)
         .single();
 
