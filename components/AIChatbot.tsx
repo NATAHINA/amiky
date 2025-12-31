@@ -7,6 +7,7 @@ import {
 } from '@mantine/core';
 import { MessageCircle, Send, X, Bot } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient'; 
+import { useMediaQuery } from '@mantine/hooks';
 
 export default function AIChatbot() {
   const [opened, setOpened] = useState(false);
@@ -14,6 +15,7 @@ export default function AIChatbot() {
   const [chat, setChat] = useState<{role: string, content: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null); // Ajoute cet état
+  const isMobile = useMediaQuery('(max-width: 480px)');
 
   useEffect(() => {
     const getUser = async () => {
@@ -66,7 +68,7 @@ export default function AIChatbot() {
 
   return (
     <>
-      <Affix position={{ bottom: 70, right: 20 }}>
+      <Affix position={{ bottom: isMobile ? 80 : 20, right: 20 }}>
         <Transition transition="slide-up" mounted={opened}>
           {(transitionStyles) => (
             <Paper
@@ -74,7 +76,7 @@ export default function AIChatbot() {
               shadow="xl"
               p="md"
               radius="md"
-              style={{ ...transitionStyles, width: 350, height: 450, display: 'flex', flexDirection: 'column' }}
+              style={{ ...transitionStyles, width: isMobile ? 'calc(100vw - 40px)' : 350, height: isMobile ? '60vh' : 450, display: 'flex', flexDirection: 'column', right: isMobile ? 20 : 0 }}
               mb="md"
             >
               <Group justify="space-between" mb="xs">
