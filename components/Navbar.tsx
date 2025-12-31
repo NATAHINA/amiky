@@ -162,7 +162,7 @@ export default function Navbar() {
           boxShadow: "var(--mantine-shadow-xs)",
         }}
       >
-        <Container size="xl" h={30}>
+        <Container size="xl" h={70}>
           <Group justify="space-between" h="100%">
             
             <Anchor component={Link} href="/" underline="never">

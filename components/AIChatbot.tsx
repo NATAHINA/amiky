@@ -66,7 +66,7 @@ export default function AIChatbot() {
 
   return (
     <>
-      <Affix position={{ bottom: 60, right: 20 }}>
+      <Affix position={{ bottom: 70, right: 20 }}>
         <Transition transition="slide-up" mounted={opened}>
           {(transitionStyles) => (
             <Paper
