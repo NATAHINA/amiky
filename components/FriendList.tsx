@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Stack, Group, Avatar, Text, Menu, ActionIcon, ScrollArea, Flex, Paper, Box, Indicator, UnstyledButton
+  Stack, Group, Avatar, Text, Menu, ActionIcon, ScrollArea, Flex, Paper, Box, Indicator
 } from "@mantine/core";
 import { UserMinus, MessageCircle, X, EllipsisVertical } from "lucide-react";
 import PrivateChat from "./PrivateChat";
@@ -21,61 +21,57 @@ interface Friend {
 }
 
 interface FriendListProps {
-  friends: Friend[];
   currentUserId: string;
+  friends: Friend[];
 }
 
-export default function FriendList({ friends, currentUserId }: FriendListProps) {
-  // const [friendList, setFriendList] = useState<Friend[]>([]);
-  // const [openedChat, setOpenedChat] = useState(false);
-  // const [currentChatUser, setCurrentChatUser] = useState<Friend | null>(null);
-
+export default function FriendList({ currentUserId, friends }: FriendListProps) {
   const [friendList, setFriendList] = useState<Friend[]>([]);
   const [openedChat, setOpenedChat] = useState(false);
   const [currentChatUser, setCurrentChatUser] = useState<Friend | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const fetchFriends = useCallback(async () => {
-  try {
-    // 1️⃣ Récupérer les ids des amis acceptés
-    const { data: followersData, error: followerError } = await supabase
-      .from("followers")
-      .select("following_id")
-      .eq("status", "accepted")
-      .eq("follower_id", currentUserId);
+    if (!currentUserId) return;
+    try {
+      // 1. Récupérer les IDs des gens que JE suis
+      const { data: followersData, error: followerError } = await supabase
+        .from("followers")
+        .select("following_id")
+        .eq("status", "accepted")
+        .eq("follower_id", currentUserId);
 
-    if (followerError) throw followerError;
+      if (followerError) throw followerError;
 
-    const friendIds = followersData?.map(f => f.following_id).filter(Boolean);
+      const friendIds = followersData?.map(f => f.following_id).filter(Boolean);
 
-    if (!friendIds || friendIds.length === 0) {
+      if (!friendIds || friendIds.length === 0) {
+        setFriendList([]);
+        return;
+      }
+
+      // 2. Récupérer les profils (en excluant le mien au cas où)
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url, last_active")
+        .in("id", friendIds)
+        .neq("id", currentUserId); // Sécurité : ne pas s'inclure soi-même
+
+      if (profileError) throw profileError;
+
+      setFriendList(profiles || []);
+    } catch (err) {
+      console.error("Erreur fetching friends:", err);
       setFriendList([]);
-      return;
     }
-
-    // 2️⃣ Récupérer les profils correspondants
-    const { data: profiles, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, username, full_name, avatar_url, last_active")
-      .in("id", friendIds);
-
-    if (profileError) throw profileError;
-
-    setFriendList(profiles || []);
-  } catch (err) {
-    console.error("Erreur fetching friends:", err);
-    setFriendList([]);
-  }
-}, [currentUserId]);
-
+  }, [currentUserId]);
 
   useEffect(() => {
-    if (!currentUserId) return;
     fetchFriends();
-  }, [currentUserId, fetchFriends]);
+  }, [fetchFriends]);
 
-  
 
+  // Realtime : Update status (online/offline)
   useEffect(() => {
     const channel = supabase
       .channel("profiles_status")
@@ -97,18 +93,6 @@ export default function FriendList({ friends, currentUserId }: FriendListProps) 
       supabase.removeChannel(channel);
     };
   }, []);
-  
-  useEffect(() => {
-    if (!currentChatUser?.id) return;
-    const interval = setInterval(async () => {
-      await supabase
-        .from("profiles")
-        .update({ last_active: new Date().toISOString() })
-        .eq("id", currentUserId);
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [currentChatUser, currentUserId]);
 
   const isOnline = (user: Friend) => {
     if (!user?.last_active) return false;
@@ -120,45 +104,45 @@ export default function FriendList({ friends, currentUserId }: FriendListProps) 
     const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
     if (seconds < 60) return `En ligne il y a ${seconds}s`;
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `En ligne il y a ${minutes}min`;
+    if (minutes < 60) return `${minutes}min`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `En ligne il y a ${hours}h`;
-    const days = Math.floor(hours / 24);
-    return `En ligne il y a ${days}j`;
+    if (hours < 24) return `${hours}h`;
+    return `+1j`;
   };
 
-
   const handleUnfollow = async (targetId: string) => {
-    if (!currentUserId || !targetId) return;
-
-    // Mise à jour optimiste de l'UI
     setFriendList(prev => prev.filter(f => f.id !== targetId));
-
-    // Supprime la relation peu importe qui est le follower ou le following
     const { error } = await supabase
       .from("followers")
       .delete()
-      .or(`and(follower_id.eq.${currentUserId},following_id.eq.${targetId}),and(follower_id.eq.${targetId},following_id.eq.${currentUserId})`);
+      .eq("follower_id", currentUserId)
+      .eq("following_id", targetId);
 
     if (error) {
-      console.error("Erreur lors de la suppression :", error);
-      fetchFriends(); // Recharger en cas d'échec
+      console.error("Erreur unfollow:", error);
+      fetchFriends();
     }
   };
 
-  if (!friends.length) return <Text fz={14} c="dimmed" ta="center">Aucun ami trouvé.</Text>;
+  // On utilise friendList ici (et non la prop friends)
+  if (friendList.length === 0) {
+    return <Text fz={14} c="dimmed" ta="center" mt="md">Aucun utilisateur suivi.</Text>;
+  }
 
+  if (friends.length === 0) {
+    return <Text ta="center" c="dimmed" >Aucun ami trouvé.</Text>;
+  }
 
   return (
     <>
       <ScrollArea h={500} scrollbarSize={4}>
-        <Stack gap="xs" >
-          {friends.map((f) => (
+        <Stack gap="xs">
+          {friendList.map((f) => (
             <Paper 
               key={f.id} 
               withBorder 
               p="xs" 
-              radius="md" 
+              radius="md"
               style={(theme) => ({
                 transition: 'background 0.2s ease',
                 '&:hover': { backgroundColor: theme.colors.gray[0] }
@@ -182,7 +166,7 @@ export default function FriendList({ friends, currentUserId }: FriendListProps) 
                   </Indicator>
                   
                   <Box style={{ flex: 1 }}>
-                    <Text fz="sm" fw={600} component={Link} href={`/profile/${f.id}`} style={{ textDecoration: 'none' }}>
+                    <Text fz="sm" fw={600} component={Link} href={`/profile/${f.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       {f.full_name || f.username}
                     </Text>
                     <Text size="xs" c="dimmed">
@@ -200,20 +184,19 @@ export default function FriendList({ friends, currentUserId }: FriendListProps) 
                     <MessageCircle size={16} />
                   </ActionIcon>
 
-                  <Menu shadow="md" width={180} position="bottom-end" transitionProps={{ transition: 'pop' }}>
+                  <Menu shadow="md" width={180} position="bottom-end">
                     <Menu.Target>
                       <ActionIcon variant="subtle" color="gray" radius="xl">
                         <EllipsisVertical size={16} />
                       </ActionIcon>
                     </Menu.Target>
                     <Menu.Dropdown>
-                      <Menu.Label>Actions</Menu.Label>
                       <Menu.Item 
                         leftSection={<UserMinus size={14} />} 
                         color="red" 
                         onClick={() => handleUnfollow(f.id)}
                       >
-                        Retirer des amis
+                        Ne plus suivre
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
@@ -232,10 +215,10 @@ export default function FriendList({ friends, currentUserId }: FriendListProps) 
           radius={isMobile ? 0 : "md"} // Pas d'arrondi sur mobile pour le plein écran
           style={{
             position: "fixed",
-            bottom: isMobile ? 0 : 20,
-            right: isMobile ? 0 : 20,
+            bottom: isMobile ? 0 : 10,
+            right: isMobile ? 0 : 10,
             width: isMobile ? "100%" : 380,
-            height: isMobile ? "100dvh" : 550, // use 100dvh for better mobile support
+            height: isMobile ? "100dvh" : 450, // use 100dvh for better mobile support
             zIndex: 2000,
             display: "flex",
             flexDirection: "column",
@@ -246,9 +229,7 @@ export default function FriendList({ friends, currentUserId }: FriendListProps) 
           <Group 
             justify="space-between" 
             p="sm" 
-            bg="indigo.7" 
-            c="white" 
-            style={{ flexShrink: 0, zIndex: 10 }}
+            style={{ flexShrink: 0, zIndex: 10, borderBottom: "1px solid #D2D2D2" }}
           >
             <Group gap="xs">
               <Avatar src={currentChatUser.avatar_url} size="sm" radius="xl" />
@@ -261,7 +242,7 @@ export default function FriendList({ friends, currentUserId }: FriendListProps) 
                 </Text>
               </Box>
             </Group>
-            <ActionIcon variant="transparent" color="white" onClick={() => setOpenedChat(false)}>
+            <ActionIcon variant="light" onClick={() => setOpenedChat(false)}>
               <X size={18} />
             </ActionIcon>
           </Group>

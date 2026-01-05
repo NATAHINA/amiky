@@ -13,6 +13,7 @@ import {
   Card,
   Button,
   Pagination,
+  Center
 } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { useMediaQuery } from "@mantine/hooks";
@@ -54,9 +55,8 @@ export default function SuggestionsList({
     })
   );
 
-  const filteredSuggestions = suggestions.filter(
-    (u) => u?.id && (u.status ?? "follow") === "follow"
-  );
+
+  const filteredSuggestions = suggestions.filter((u) => u?.id !== currentUserId);
 
   if (!filteredSuggestions.length) {
     return (
@@ -74,59 +74,55 @@ export default function SuggestionsList({
   );
 
   /** Carte suggestion réutilisable */
-  const SuggestionCard = ({ u }: { u: Suggestion }) => {
-    const status: FollowStatus = u.status ?? "follow";
+  
 
+  const SuggestionCard = ({ u }: { u: Suggestion }) => {
     return (
-      <Card shadow="sm" padding="md" radius="md" withBorder>
-        <Card.Section ta="center">
-          <Flex justify="center">
+      <Card 
+        shadow="sm" 
+        padding="md" 
+        radius="md" 
+        withBorder 
+        style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1 }}
+      >
+        <Card.Section>
+          <Center bg="gray.0" h={150}>
             {u.avatar_url ? (
-              <Image
-                src={u.avatar_url}
-                height={150}
-                alt={u.full_name || u.username || "Utilisateur"}
-              />
+              <Image src={u.avatar_url} height={150} fit="cover" alt="Avatar" />
             ) : (
-              <Avatar size={150} />
+              <Avatar size={80} />
             )}
-          </Flex>
+          </Center>
         </Card.Section>
 
-        <Text fw={500} ta="center" mt="sm">
-          {u.full_name || u.username}
-        </Text>
+        {/* Ce Stack avec flex: 1 pousse les boutons vers le bas */}
+        <Stack gap="xs" mt="sm" style={{ flex: 1 }}>
+          <Text fw={600} ta="center" size="sm" truncate>
+            {u.full_name || u.username}
+          </Text>
+        </Stack>
 
-        <Button
-          component={Link}
-          href={`/profile/${u.id}`}
-          variant="outline"
-          size="xs"
-          my="sm"
-          fullWidth
-        >
-          Voir le profil
-        </Button>
-
-        <FollowButton
-          targetId={u.id}
-          currentUserId={currentUserId}
-          initialStatus={status}
-        />
+        <Stack gap={5} mt="md">
+          <Button component={Link} href={`/profile/${u.id}`} variant="light" size="xs" fullWidth>
+            Voir le profil
+          </Button>
+          <FollowButton targetId={u.id} currentUserId={currentUserId} initialStatus="follow" />
+        </Stack>
       </Card>
     );
   };
 
   return (
     <Stack gap="md">
-      {/* 📱 MOBILE → CAROUSEL */}
+      {/* MOBILE → CAROUSEL */}
       {isMobile ? (
         <Carousel
-          slideSize={{ base: "70%", xs: "40%" }}
+          slideSize={{ base: "70%",xs: "40%", sm: '33.33%', md: '28%', lg: '25%' }}
           slideGap="md"
           plugins={[autoplay.current]}
           onMouseEnter={autoplay.current.stop}
           onMouseLeave={autoplay.current.reset}
+          styles={{ slide: { display: 'flex' } }}
         >
           {filteredSuggestions.map((u) => (
             <Carousel.Slide key={u.id}>
@@ -136,10 +132,10 @@ export default function SuggestionsList({
         </Carousel>
       ) : (
         <>
-          {/* 🖥️ MD+ → GRID 15 PAR PAGE */}
-          <Grid>
+          {/* MD+ → GRID 15 PAR PAGE */}
+          <Grid gutter="md" align="stretch">
             {paginatedSuggestions.map((u) => (
-              <Grid.Col key={u.id} span={{ xs: 6, sm: 4, md: 4, lg: 3 }}>
+              <Grid.Col key={u.id} span={{ xs: 6, sm: 4, md: 4, lg: 3 }} style={{ display: 'flex' }}>
                 <SuggestionCard u={u} />
               </Grid.Col>
             ))}

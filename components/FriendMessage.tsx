@@ -282,5 +282,5 @@ function ConversationItem({ conv, active, onClick }: { conv: Conversation, activ
 function isOnline(profile: any) {
     if (!profile?.last_active) return false;
     const diff = Date.now() - new Date(profile.last_active).getTime();
-    return diff < 5 * 60 * 1000;
+    return diff < 2 * 60 * 1000;
 }

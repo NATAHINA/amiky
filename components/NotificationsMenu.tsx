@@ -171,7 +171,7 @@ export default function NotificationsMenu() {
           disabled={unreadCount === 0}
         >
           <ActionIcon variant="light">
-            <Bell size={18} />
+            <Bell size={17} />
           </ActionIcon>
         </Indicator>
       </Menu.Target>

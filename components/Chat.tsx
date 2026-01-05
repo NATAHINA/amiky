@@ -109,12 +109,14 @@ export default function Chat({ conversation, onBack }: ChatProps) {
 
 
   // Charger les messages initiaux et écouter le Realtime
+  
   useEffect(() => {
     if (!conversation?.id) return;
 
     const isTemporary = conversation.id.startsWith("no-conv-");
 
     if (!isTemporary) {
+      // 1. Charger les messages existants
       const fetchMessages = async () => {
         const { data } = await supabase
           .from("messages")
@@ -124,14 +126,34 @@ export default function Chat({ conversation, onBack }: ChatProps) {
         
         if (data) {
           setMessages(data);
-          // On attend que le DOM soit mis à jour pour scroller
           setTimeout(() => scrollToBottom("auto"), 50);
         }
       };
       fetchMessages();
 
+      // 2. Écouter les changements (INSERT et DELETE)
       const channel = supabase
         .channel(`chat_room_${conversation.id}`)
+        .on(
+          "postgres_changes",
+          { 
+            event: "INSERT", // <--- AJOUTÉ : Écouter les nouveaux messages
+            schema: "public", 
+            table: "messages", 
+            filter: `conversation_id=eq.${conversation.id}` 
+          },
+          (payload) => {
+            const newMessage = payload.new as Message;
+            
+            setMessages((prev) => {
+              // Éviter les doublons si le message a déjà été ajouté par l'Optimistic Update
+              if (prev.find(m => m.id === newMessage.id)) return prev;
+              return [...prev, newMessage];
+            });
+            
+            setTimeout(() => scrollToBottom("smooth"), 100);
+          }
+        )
         .on(
           "postgres_changes",
           { 
@@ -140,11 +162,8 @@ export default function Chat({ conversation, onBack }: ChatProps) {
             table: "messages", 
             filter: `conversation_id=eq.${conversation.id}` 
           },
-       
           (payload) => {
             setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
-            
-            setTimeout(() => scrollToBottom("smooth"), 100);
           }
         )
         .subscribe();
@@ -303,7 +322,7 @@ export default function Chat({ conversation, onBack }: ChatProps) {
             return (
               <Flex key={msg.id} justify={isMe ? "flex-end" : "flex-start"} align="center" gap="xs">
                 {isMe && (
-                  <Menu shadow="md" width={150}>
+                  <Menu shadow="md" width={150} withinPortal={true} zIndex={3000}>
                     <Menu.Target>
                       <ActionIcon variant="subtle" color="gray" size="sm" className="show-on-hover">
                         <MoreVertical size={14} />

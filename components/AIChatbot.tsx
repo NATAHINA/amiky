@@ -82,7 +82,7 @@ export default function AIChatbot() {
               <Group justify="space-between" mb="xs">
                 <Group gap="xs">
                   <Bot size={20} color="var(--mantine-color-blue-filled)" />
-                  <Text fw={600}>Assistant IA</Text>
+                  <Text fw={600}>Assistant</Text>
                 </Group>
                 <ActionIcon variant="subtle" color="gray" onClick={() => setOpened(false)}>
                   <X size={18} />

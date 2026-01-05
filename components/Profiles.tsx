@@ -594,11 +594,6 @@ useEffect(() => {
         .from('followers')
         .delete()
         .or(`and(follower_id.eq.${user.id},following_id.eq.${profile.id}),and(follower_id.eq.${profile.id},following_id.eq.${user.id})`);
-        // .or(`follower_id.eq.${user.id},following_id.eq.${user.id}`)
-        // .or(`follower_id.eq.${profile.id},following_id.eq.${profile.id}`);
-        // .or(
-        //   `and(follower_id.eq.${user.id},following_id.eq.${profile.id}),and(follower_id.eq.${profile.id},following_id.eq.${user.id})`
-        // );
 
       if (error) {
         console.error("Erreur suppression relations :", error);
@@ -1016,14 +1011,14 @@ useEffect(() => {
                   {profile.full_name || profile.username}
                 </Text>
                 <Text c="dimmed" size="sm">@{profile.username}</Text>
-              </Box>
-              
-              {/* Statut en ligne visible uniquement pour les autres */}
-              {!isOwner && (
+
+                {!isOwner && (
                 <Badge color={isOnline(profile) ? "green" : "gray"} variant="dot">
                   {isOnline(profile) ? "En ligne" : timeAgo(profile.last_active)}
                 </Badge>
               )}
+              </Box>
+              
             </Group>
             
             {profile.bio && (
@@ -1041,19 +1036,90 @@ useEffect(() => {
                   Modifier
                 </Button>
                 <ActionIcon variant="light" size="lg" onClick={() => setEditPasswordModal(true)} style={{ flexShrink: 0 }}>
-                   <EllipsisVertical size={18} />
+                  <EllipsisVertical size={18} />
                 </ActionIcon>
               </>
             ) : (
-              <Group gap="xs" flex={{ base: 1, sm: 'initial' }} justify="flex-end" wrap="nowrap">
-                 <Button 
-                   leftSection={<MessageCircle size={16}/>} 
-                   onClick={() => openChatWithUser(profile)}
-                   variant="filled"
-                   flex={{ base: 1, sm: 'initial' }}
-                 >
-                   Message
-                 </Button>
+              <Group gap="xs" flex={{ base: 1, sm: 'initial' }} justify="flex-end" wrap="nowrap" style={{ width: '100%' }}>
+                
+                {/* CAS 1 : Déjà amis (accepted) */}
+                {following === 'accepted' ? (
+                  <>
+                    <Button 
+                      leftSection={<MessageCircle size={16}/>} 
+                      onClick={() => openChatWithUser(profile)}
+                      variant="filled"
+                      flex={1}
+                    >
+                      Discuter
+                    </Button>
+                    
+                    <Menu shadow="md" width={200} position="bottom-end">
+                      <Menu.Target>
+                        <ActionIcon variant="light" size="lg">
+                          <EllipsisVertical size={18} />
+                        </ActionIcon>
+                      </Menu.Target>
+
+                      <Menu.Dropdown>
+                        <Menu.Item 
+                          color="red" 
+                          leftSection={<UserRoundMinus size={14} />} 
+                          onClick={() => setConfirmDeleteAllModal(true)}
+                        >
+                          Retirer
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  </>
+                ) : (
+                  /* CAS 2 : Pas encore amis (none ou pending) */
+                  <Button
+                    fullWidth={isMobile}
+                    leftSection={
+                      following === 'pending' ? <Hourglass size={16} /> : <UserPlus size={16} />
+                    }
+                    variant={following === 'pending' ? "light" : "filled"}
+                    color={following === 'pending' ? "gray" : "blue"}
+                    onClick={handleFollow}
+                    loading={loading}
+                    flex={{ base: 1, sm: 'initial' }}
+                  >
+                    {following === 'pending' 
+                      ? (isReceiver ? "Répondre à l'invitation" : "En attente...") 
+                      : "Ajouter"
+                    }
+                  </Button>
+                )}
+
+                {/* Bouton spécial si on a reçu une invitation (isReceiver) */}
+                {following === 'pending' && isReceiver && (
+                  
+                  <Menu shadow="md" width={200} position="bottom-end">
+                      <Menu.Target>
+                        <ActionIcon variant="light" size="lg">
+                          <EllipsisVertical size={18} />
+                        </ActionIcon>
+                      </Menu.Target>
+
+                      <Menu.Dropdown>
+                        <Menu.Item 
+                          color="teal"
+                          leftSection={<Check size={14} />} 
+                          onClick={() => handleConfirmFollow()}
+                        >
+                          Confirmer
+                        </Menu.Item>
+                        <Menu.Item 
+                          color="red" 
+                          leftSection={<UserRoundMinus size={14} />} 
+                          onClick={() => handleDeleteAll()}
+                        >
+                          Annuler
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                )}
               </Group>
             )}
           </Group>
@@ -1338,6 +1404,7 @@ useEffect(() => {
             </Button>
           </Group>
         </Modal>
+
 
         <Modal 
           opened={editProfileModal} 

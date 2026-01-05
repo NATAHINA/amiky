@@ -14,8 +14,8 @@ export default function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <ActionIcon size="lg" variant="outline">
-        <Sun size={20} />
+      <ActionIcon size="md" variant="light">
+        <Sun size={17} />
       </ActionIcon>
     );
   }
@@ -24,11 +24,11 @@ export default function ThemeToggle() {
 
   return (
     <ActionIcon
-      size="lg"
-      variant="outline"
+      size="md"
+      variant="light"
       onClick={() => setColorScheme(dark ? "light" : "dark")}
     >
-      {dark ? <Sun size={20} /> : <Moon size={20} />}
+      {dark ? <Sun size={17} /> : <Moon size={17} />}
     </ActionIcon>
   );
 }

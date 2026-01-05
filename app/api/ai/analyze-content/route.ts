@@ -36,8 +36,6 @@ export async function POST(req: Request) {
     // 3. Nettoyage de la réponse
     const decision = response.choices[0].message.content?.trim().toUpperCase();
 
-    // 4. Renvoi du résultat au front-end
-    // On vérifie si le mot 'BLOCKED' est présent dans la réponse pour être sûr
     if (decision?.includes("BLOCKED")) {
       return NextResponse.json({ result: "BLOCKED" });
     }

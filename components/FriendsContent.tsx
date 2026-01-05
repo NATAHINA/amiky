@@ -55,8 +55,8 @@ export default function FriendsContent() {
     try {
       const { data: followersData, error: followersError } = await supabase
         .from("followers")
-        .select("following_id, status")
-        .eq("follower_id", userId);
+        .select("following_id, follower_id, status")
+        .or(`follower_id.eq.${userId},following_id.eq.${userId}`);
 
       if (followersError || !followersData) {
         console.error("Erreur followers:", followersError);
@@ -64,10 +64,20 @@ export default function FriendsContent() {
         return; 
       }
 
+      const excludedIds = new Set();
+      excludedIds.add(userId);
+
+      if (followersData) {
+        followersData.forEach(rel => {
+          excludedIds.add(rel.following_id);
+          excludedIds.add(rel.follower_id);
+        });
+      }
+
       const { data: allProfiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
-        .neq("id", userId);
+        .not("id", "in", `(${Array.from(excludedIds).join(',')})`);
 
       const followedOrPendingIds = followersData
         .filter(f => f.status === "accepted" || f.status === "pending")
@@ -163,7 +173,7 @@ export default function FriendsContent() {
                     leftSection={<Search size={14} />}
                     value={searchSuggest}
                     onChange={(e) => setSearchSuggest(e.currentTarget.value)}
-                    style={{ flex: 1, maxWidth: 250 }}
+                    style={{ flex: 1, maxWidth: 250, marginBottom: 20 }}
                   />
                 </Stack>
                 
@@ -203,3 +213,4 @@ export default function FriendsContent() {
     </Container>
   );
 }
+

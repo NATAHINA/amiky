@@ -14,7 +14,7 @@ import {
   Avatar,
   Flex,
   Pagination,
-  Stack,
+  Stack, Center
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { Carousel } from "@mantine/carousel";
@@ -180,54 +180,58 @@ export default function InvitationsPage({ currentUserId }: InvitationsPageProps)
 
   // Carte réutilisable
   const InvitationCard = ({ f }: { f: Friend }) => (
-    <Card shadow="sm" padding="md" radius="md" withBorder>
-      <Card.Section ta="center">
-        <Flex justify="center">
-          {f.avatar_url ? (
-            <Image
-              src={f.avatar_url}
-              height={150}
-              alt={f.full_name || f.username || "Utilisateur"}
-            />
-          ) : (
-            <Avatar size={150} />
-          )}
-        </Flex>
-      </Card.Section>
 
-      <Text fw={500} ta="center" mt="sm" component={Link} href={`/profile/${f.id}`}>
-        {f.full_name || f.username}
-      </Text>
-
-      <Button 
-        fullWidth 
-        size="xs"
-        my="sm" 
-        onClick={() => handleAccept(f.id)}>
-        Confirmer
-      </Button>
-
-      <Button
-        variant="outline"
-        fullWidth
-        size="xs"
-        style={{color: "red", borderColor: "red"}}
-        onClick={() => handleReject(f.id)}
+    <Card 
+        shadow="sm" 
+        padding="md" 
+        radius="md" 
+        withBorder 
+        style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1 }}
       >
-        Supprimer
-      </Button>
-    </Card>
+        <Card.Section>
+          <Center bg="gray.0" h={150}>
+            {f.avatar_url ? (
+              <Image src={f.avatar_url} height={150} fit="cover" alt="Avatar"/>
+            ) : (
+              <Avatar size={80} />
+            )}
+          </Center>
+        </Card.Section>
+
+        {/* Ce Stack avec flex: 1 pousse les boutons vers le bas */}
+        <Stack gap="xs" mt="sm" style={{ flex: 1 }}>
+          <Text fw={600} ta="center" size="sm" truncate component={Link} href={`/profile/${f.id}`}>
+            {f.full_name || f.username}
+          </Text>
+        </Stack>
+
+        <Stack gap={5} mt="md">
+          <Button onClick={() => handleAccept(f.id)} variant="filled" size="xs" fullWidth>
+            Confirmer
+          </Button>
+          <Button
+            variant="outline"
+            fullWidth
+            size="xs"
+            style={{color: "red", borderColor: "red"}}
+            onClick={() => handleReject(f.id)}
+          >
+            Supprimer
+          </Button>
+        </Stack>
+      </Card>
   );
 
   return (
     <Stack gap="md">
       {isMobile ? (
         <Carousel
-          slideSize={{ base: "70%", xs: "40%" }}
+          slideSize={{ base: "70%",xs: "40%", sm: '33.33%', md: '28%', lg: '25%' }}
           slideGap="md"
           plugins={[autoplay.current]}
           onMouseEnter={autoplay.current.stop}
           onMouseLeave={autoplay.current.reset}
+          styles={{ slide: { display: 'flex' } }}
         >
           {friendList.map(f => (
             <Carousel.Slide key={f.id}>
@@ -237,9 +241,9 @@ export default function InvitationsPage({ currentUserId }: InvitationsPageProps)
         </Carousel>
       ) : (
         <>
-          <Grid>
+          <Grid gutter="md" align="stretch">
             {paginatedFriends.map(f => (
-              <Grid.Col key={f.id} span={{ xs: 6, sm: 4, md: 4, lg: 3 }}>
+              <Grid.Col key={f.id} span={{ xs: 6, sm: 4, md: 4, lg: 3 }} style={{ display: 'flex' }}>
                 <InvitationCard f={f} />
               </Grid.Col>
             ))}

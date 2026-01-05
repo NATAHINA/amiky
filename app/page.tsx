@@ -334,7 +334,7 @@ export default function Home() {
           >
             <Stack align="center" gap="md">
               <Title order={2} fz={{ base: 28, md: 38 }} fw={900} c="indigo">
-                Prêt à rejoindre l'aventure Amiky ?
+                Prêt à rejoindre Amiky ?
               </Title>
               <Text c="dimmed" fz="lg" maw={600}>
                 Créez votre compte en moins de 2 minutes et commencez à échanger avec votre communauté.
