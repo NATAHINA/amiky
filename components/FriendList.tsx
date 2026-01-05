@@ -196,7 +196,7 @@ export default function FriendList({ currentUserId, friends }: FriendListProps) 
                         color="red" 
                         onClick={() => handleUnfollow(f.id)}
                       >
-                        Ne plus suivre
+                        Retirer
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
