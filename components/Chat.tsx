@@ -249,16 +249,47 @@ export default function Chat({ conversation, onBack }: ChatProps) {
     }
   };
 
+  
+
   function formatMessageDate(dateString: string) {
     const date = new Date(dateString);
     const now = new Date();
-    const timeString = new Intl.DateTimeFormat("fr-FR", {
+
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Format heure : HH:MM
+    const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
-    }).format(date);
+    });
+    const timeString = timeFormatter.format(date);
 
-    if (date.toDateString() === now.toDateString()) return timeString;
-    return `${date.toLocaleDateString("fr-FR")} à ${timeString}`;
+    if (
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
+    ) {
+      return timeString; 
+    } else if (diffDays === 1) {
+      return `Hier à ${timeString}`;
+    } else if (diffDays === 2) {
+      return `Avant-hier à ${timeString}`;
+    } else if (diffDays < 7) {
+      const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
+      const dayName = dayFormatter.format(date);
+
+      const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+
+      return `${dayNameCapitalized} à ${timeString}`;
+    } else {
+      const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return `${fullFormatter.format(date)} à ${timeString}`;
+    }
   }
 
 

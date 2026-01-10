@@ -17,24 +17,6 @@ export default function Footer() {
         <Group justify="center" align="center">
           <Text size="sm">© {new Date().getFullYear()} - Tous droits réservés.</Text>
 
-          {/*<Group>
-            {footLinks.map((link, i) => {
-              const Icon = link.icon;
-              return (
-                <Anchor
-                  key={i}
-                  href={link.href}
-                  target="_blank"
-                  c="dimmed"
-                  component={Link}
-                  rel="noopener noreferrer"
-                >
-                  <Icon size={16} />
-                </Anchor>
-              );
-            })}
-          </Group>*/}
-
         </Group>
       </Container>
     </footer>

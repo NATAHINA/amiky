@@ -188,64 +188,64 @@
 
   
 
-//   function formatMessageDate(dateString: string) {
-//     const date = new Date(dateString);
-//     const now = new Date();
+  // function formatMessageDate(dateString: string) {
+  //   const date = new Date(dateString);
+  //   const now = new Date();
 
-//     const diffTime = now.getTime() - date.getTime();
-//     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  //   const diffTime = now.getTime() - date.getTime();
+  //   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-//     // Format heure : HH:MM
-//     const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
-//       hour: "2-digit",
-//       minute: "2-digit",
-//     });
-//     const timeString = timeFormatter.format(date);
+  //   // Format heure : HH:MM
+  //   const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
+  //     hour: "2-digit",
+  //     minute: "2-digit",
+  //   });
+  //   const timeString = timeFormatter.format(date);
 
-//     if (
-//       date.getDate() === now.getDate() &&
-//       date.getMonth() === now.getMonth() &&
-//       date.getFullYear() === now.getFullYear()
-//     ) {
-//       return timeString; 
-//     } else if (diffDays === 1) {
-//       return `Hier à ${timeString}`;
-//     } else if (diffDays === 2) {
-//       return `Avant-hier à ${timeString}`;
-//     } else if (diffDays < 7) {
-//       const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
-//       const dayName = dayFormatter.format(date);
+  //   if (
+  //     date.getDate() === now.getDate() &&
+  //     date.getMonth() === now.getMonth() &&
+  //     date.getFullYear() === now.getFullYear()
+  //   ) {
+  //     return timeString; 
+  //   } else if (diffDays === 1) {
+  //     return `Hier à ${timeString}`;
+  //   } else if (diffDays === 2) {
+  //     return `Avant-hier à ${timeString}`;
+  //   } else if (diffDays < 7) {
+  //     const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
+  //     const dayName = dayFormatter.format(date);
 
-//       const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  //     const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
 
-//       return `${dayNameCapitalized} à ${timeString}`;
-//     } else {
-//       const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
-//         day: "2-digit",
-//         month: "2-digit",
-//         year: "numeric",
-//       });
-//       return `${fullFormatter.format(date)} à ${timeString}`;
-//     }
-//   }
+  //     return `${dayNameCapitalized} à ${timeString}`;
+  //   } else {
+  //     const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
+  //       day: "2-digit",
+  //       month: "2-digit",
+  //       year: "numeric",
+  //     });
+  //     return `${fullFormatter.format(date)} à ${timeString}`;
+  //   }
+  // }
 
-//   const deleteMessage = async (messageId: string) => {
-//     if (!currentUser?.id) return;
+  // const deleteMessage = async (messageId: string) => {
+  //   if (!currentUser?.id) return;
 
-//     try {
-//       const { error } = await supabase
-//         .from("messages")
-//         .delete()
-//         .eq("id", messageId)
-//         .eq("sender_id", currentUser.id); // Sécurité : seul l'auteur peut supprimer
+  //   try {
+  //     const { error } = await supabase
+  //       .from("messages")
+  //       .delete()
+  //       .eq("id", messageId)
+  //       .eq("sender_id", currentUser.id); // Sécurité : seul l'auteur peut supprimer
 
-//       if (error) throw error;
+  //     if (error) throw error;
 
-//       setMessages((prev) => prev.filter((m) => m.id !== messageId));
-//     } catch (error) {
-//       console.error("Erreur suppression:", error);
-//     }
-//   };
+  //     setMessages((prev) => prev.filter((m) => m.id !== messageId));
+  //   } catch (error) {
+  //     console.error("Erreur suppression:", error);
+  //   }
+  // };
 
 //   const onEmojiClick = (emojiObject: any) => {
 //     setText((prev) => prev + emojiObject.emoji);
@@ -579,20 +579,65 @@ export default function PrivateChat({ otherUserId, onNewMessage }: MessageFormPr
     }
   };
 
-  const deleteMessage = async (messageId: string) => {
-    const { error } = await supabase
-      .from("messages")
-      .delete()
-      .eq("id", messageId)
-      .eq("sender_id", currentUser?.id);
-    
-    if (error) console.error("Suppression impossible");
-  };
 
   function formatMessageDate(dateString: string) {
     const date = new Date(dateString);
-    return date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    const now = new Date();
+
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Format heure : HH:MM
+    const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const timeString = timeFormatter.format(date);
+
+    if (
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
+    ) {
+      return timeString; 
+    } else if (diffDays === 1) {
+      return `Hier à ${timeString}`;
+    } else if (diffDays === 2) {
+      return `Avant-hier à ${timeString}`;
+    } else if (diffDays < 7) {
+      const dayFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
+      const dayName = dayFormatter.format(date);
+
+      const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+
+      return `${dayNameCapitalized} à ${timeString}`;
+    } else {
+      const fullFormatter = new Intl.DateTimeFormat("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return `${fullFormatter.format(date)} à ${timeString}`;
+    }
   }
+
+  const deleteMessage = async (messageId: string) => {
+    if (!currentUser?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId)
+        .eq("sender_id", currentUser.id); // Sécurité : seul l'auteur peut supprimer
+
+      if (error) throw error;
+
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch (error) {
+      console.error("Erreur suppression:", error);
+    }
+  };
 
   return (
     <Stack h="100%" gap={0} pos="relative">
