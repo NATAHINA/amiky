@@ -2,8 +2,7 @@
 
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Avatar,
   Flex,
@@ -16,14 +15,19 @@ import {
   TextInput,
   Box,
   ActionIcon,
-  Badge 
+  Badge,
+  ScrollArea,
+  rem,
+  Tooltip
 } from "@mantine/core";
-import { Search, UserPlus, ChevronLeft } from "lucide-react";
+import { Search, UserPlus, ChevronLeft, Settings2, MoreVertical } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import Chat from "@components/Chat";
 import { useMantineColorScheme, useMantineTheme } from '@mantine/core';
 
+// --- Interfaces ---
 interface Profile {
   id: string;
   username: string;
@@ -41,12 +45,11 @@ interface Conversation {
 }
 
 export default function FriendMessage() {
-
   const params = useParams();
   const router = useRouter();
   const usernameParam = params?.username as string;
 
-  const [user, setUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,19 +57,20 @@ export default function FriendMessage() {
 
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
-  
-  const borderColor = colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[3];
-  const bgColor = colorScheme === 'dark' ? theme.colors.dark[7] : theme.white;
-
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  const isDark = colorScheme === 'dark';
+  const borderColor = isDark ? theme.colors.dark[4] : theme.colors.gray[2];
+  const sidebarBg = isDark ? theme.colors.dark[8] : theme.colors.gray[0];
 
-  const loadData = async (silent = false) => {
-    if (!silent) setLoading(true);
+  // --- Chargement des données ---
+  const loadData = useCallback(async () => {
+    setLoading(true);
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return;
+    setCurrentUser(auth.user);
 
-    // Utilisation d'une seule requête complexe ou de Promise.all pour paralléliser
+    // 1. Amis acceptés
     const { data: follows } = await supabase
       .from("followers")
       .select("following_id")
@@ -74,15 +78,12 @@ export default function FriendMessage() {
       .eq("status", "accepted");
 
     const followedIds = follows?.map((f) => f.following_id) ?? [];
-    
-    if (followedIds.length === 0) {
-      setConversations([]);
-      setLoading(false);
-      return;
-    }
 
+    // 2. Parallélisation des requêtes
     const [{ data: profiles }, { data: convs }, { data: notifications }] = await Promise.all([
-      supabase.from("profiles").select("*").in("id", followedIds),
+      followedIds.length > 0 
+        ? supabase.from("profiles").select("*").in("id", followedIds) 
+        : Promise.resolve({ data: [] }),
       supabase.from("conversations").select("*").contains("participants", [auth.user.id]),
       supabase.from("notifications").select("*").eq("user_id", auth.user.id).eq("read", false).eq("type", "message")
     ]);
@@ -103,153 +104,112 @@ export default function FriendMessage() {
 
     setConversations(finalList);
 
+    // 3. Gestion de l'URL (Deep Linking)
     if (usernameParam) {
-      const targetConv = finalList.find(
-        (c) => c.recipient.username.toLowerCase() === usernameParam.toLowerCase()
-      );
-      if (targetConv) {
-        setSelectedConv(targetConv);
-        if (targetConv.unread_count > 0) markAsRead(targetConv);
+      const target = finalList.find(c => c.recipient.username.toLowerCase() === usernameParam.toLowerCase());
+      if (target) {
+        setSelectedConv(target);
+        if (target.unread_count > 0) markAsRead(target, auth.user.id);
+      } else {
+        // Recherche profil si pas dans la liste d'amis (Correction build appliquée ici)
+        const { data: p } = await supabase.from("profiles").select("*").eq("username", usernameParam).single();
+        if (p) {
+          setSelectedConv({
+            id: `no-conv-${p.id}`,
+            participants: [auth.user.id, p.id],
+            recipient: p,
+            last_active: p.last_active,
+            unread_count: 0
+          });
+        }
       }
     }
-
     setLoading(false);
-  };
+  }, [usernameParam]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const markAsRead = async (conv: Conversation) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || conv.id.startsWith("no-conv-")) return;
-
-    // Mettre à jour en BDD
-    const { error } = await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", user.id)
-      .eq("conversation_id", conv.id)
-      .eq("type", "message")
-      .eq("read", false);
-
+  const markAsRead = async (conv: Conversation, userId: string) => {
+    if (conv.id.startsWith("no-conv-")) return;
+    const { error } = await supabase.from("notifications").update({ read: true })
+      .eq("user_id", userId).eq("conversation_id", conv.id).eq("type", "message").eq("read", false);
     if (!error) {
-      // Mettre à jour l'état local pour faire disparaître le badge immédiatement
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conv.id ? { ...c, unread_count: 0 } : c
-        )
-      );
+      setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c));
     }
   };
 
-  // Modifier la sélection pour appeler markAsRead
-  const handleSelectConversation = (conv: Conversation) => {
+  const handleSelect = (conv: Conversation) => {
     setSelectedConv(conv);
     router.push(`/chat/${conv.recipient.username}`, { scroll: false });
-    if (conv.unread_count > 0) {
-      markAsRead(conv);
-    }
+    if (conv.unread_count > 0 && currentUser) markAsRead(conv, currentUser.id);
   };
 
-  // --- FILTRAGE OPTIMISÉ ---
   const filteredConversations = useMemo(() => {
-    return conversations.filter((conv) =>
-      conv.recipient.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      conv.recipient.username?.toLowerCase().includes(search.toLowerCase())
+    return conversations.filter((c) =>
+      c.recipient.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.recipient.username?.toLowerCase().includes(search.toLowerCase())
     );
   }, [conversations, search]);
 
-
-  // Sur mobile, si une conv est sélectionnée, on cache la liste
   const showList = !isMobile || (isMobile && !selectedConv);
   const showChat = !isMobile || (isMobile && selectedConv);
 
   return (
-    <Flex w="100%" h="calc(100vh - 70px)" bg="var(--mantine-color-body)" mt="md">
+    <Flex w="100%" h="calc(100vh - 70px)" bg={isDark ? theme.colors.dark[9] : theme.white} mt="md">
       {showList && (
-        <Box
-          w={isMobile ? "100%" : "350px"}
-          bg="var(--mantine-color-body)"
-          style={{ 
-            borderRight: `1px solid ${borderColor}`, 
-            display: "flex", 
-            flexDirection: "column",
-            height: "100%", 
-          }}
-        >
-          <Box p="md" style={{ borderBottom: `1px solid ${borderColor}`, flexShrink: 0 }}>
-            <Title order={4} mb="sm">Messages</Title>
+        <Box w={isMobile ? "100%" : 380} style={{ borderRight: `1px solid ${borderColor}`, display: "flex", flexDirection: "column" }} bg={sidebarBg}>
+          <Stack p="lg" gap="md">
+            <Flex justify="space-between" align="center">
+              <Title order={3} fz={rem(24)} fw={800} lts={-0.5}>Messages</Title>
+              <ActionIcon variant="subtle" radius="md" color="gray"><Settings2 size={20} /></ActionIcon>
+            </Flex>
             <TextInput
-              placeholder="Rechercher..."
-              leftSection={<Search size={16} />}
+              placeholder="Rechercher un ami..."
+              leftSection={<Search size={16} strokeWidth={2.5} />}
               value={search}
               onChange={(e) => setSearch(e.currentTarget.value)}
-              radius="md"
+              radius="xl"
+              size="md"
+              styles={{ input: { backgroundColor: isDark ? theme.colors.dark[6] : theme.white } }}
             />
-          </Box>
+          </Stack>
 
-          <Box 
-            style={{ 
-              flex: 1, 
-              overflowY: "auto", 
-              scrollbarWidth: "thin",
-            }} 
-            p="xs"
-          >
+          <ScrollArea style={{ flex: 1 }} px="md">
             {loading ? (
-              <Flex justify="center" mt="xl"><Loader size="sm" /></Flex>
+              <Flex justify="center" mt="xl"><Loader variant="dots" /></Flex>
             ) : filteredConversations.length > 0 ? (
-              <Stack gap={4}>
+              <Stack gap={4} pb="md">
                 {filteredConversations.map((conv) => (
                   <ConversationItem 
                     key={conv.id} 
                     conv={conv} 
-                    active={selectedConv?.id === conv.id}
-                    onClick={() => handleSelectConversation(conv)}
+                    active={selectedConv?.recipient.id === conv.recipient.id} 
+                    onClick={() => handleSelect(conv)}
+                    isDark={isDark}
                   />
                 ))}
               </Stack>
             ) : (
-              <Stack align="center" mt="xl" c="dimmed">
-                <UserPlus size={40} />
-                <Text size="sm">Aucun ami trouvé</Text>
+              <Stack align="center" mt={50} c="dimmed" gap="xs">
+                <UserPlus size={40} strokeWidth={1.5} opacity={0.4} />
+                <Text fz="sm" fw={500}>Aucun ami trouvé</Text>
               </Stack>
             )}
-          </Box>
+          </ScrollArea>
         </Box>
       )}
 
-     
-      {/* ZONE DE CHAT */}
       {showChat && (
-        <Flex 
-          flex={1} 
-          direction="column" 
-          bg={colorScheme === 'dark' ? theme.colors.dark[6] : theme.white}
-          >
+        <Flex flex={1} direction="column" bg={isDark ? theme.colors.dark[7] : theme.white}>
           {selectedConv ? (
             <>
-              {/* Header du Chat Mobile pour revenir en arrière */}
-              {isMobile && (
-                <Flex p="sm" align="center" bg={colorScheme === 'dark' ? theme.colors.dark[6] : theme.white}>
-                  <ActionIcon variant="subtle" onClick={() => setSelectedConv(null)} mr="sm">
-                    <ChevronLeft size={24} />
-                  </ActionIcon>
-                  <Avatar src={selectedConv.recipient.avatar_url} size="sm" mr="xs" />
-                  <Text fw={600}>{selectedConv.recipient.full_name || selectedConv.recipient.username}</Text>
-                </Flex>
-              )}
               
-              <Chat 
-                conversation={selectedConv} 
-                onBack={() => setSelectedConv(null)} 
-              />
+              <Chat conversation={selectedConv} onBack={() => { setSelectedConv(null); router.push('/chat') }} />
             </>
           ) : (
-            <Flex flex={1} align="center" justify="center" direction="column" c="dimmed">
-              <Title order={3}>Vos messages</Title>
-              <Text>Sélectionnez une discussion pour commencer</Text>
+            <Flex flex={1} align="center" justify="center" direction="column" opacity={0.5}>
+              <Title order={3}>Vos discussions</Title>
+              <Text fz="sm">Sélectionnez un contact pour commencer à discuter</Text>
             </Flex>
           )}
         </Flex>
@@ -258,31 +218,45 @@ export default function FriendMessage() {
   );
 }
 
-function ConversationItem({ conv, active, onClick }: { conv: Conversation, active: boolean, onClick: () => void }) {
-  const { colorScheme } = useMantineColorScheme();
+function ConversationItem({ conv, active, onClick, isDark }: any) {
+  const online = isOnline(conv.recipient.last_active);
   const theme = useMantineTheme();
 
   return (
     <Card
-      p="sm"
-      radius="md"
+      p="md"
+      radius="lg"
       onClick={onClick}
-      bg={colorScheme === 'dark' ? theme.colors.dark[6] : theme.white}
+      className="conv-card"
       style={{
         cursor: "pointer",
-        transition: "background 0.2s ease"
+        transition: "all 0.2s ease",
+        backgroundColor: active 
+          ? (isDark ? theme.colors.blue[9] : theme.colors.blue[0]) 
+          : 'transparent',
+        border: `1px solid ${active ? theme.colors.blue[4] : 'transparent'}`,
       }}
-      className="conv-item"
+      styles={{
+        root: {
+          '&:hover': {
+            backgroundColor: active 
+              ? undefined 
+              : (isDark ? theme.colors.dark[6] : theme.colors.gray[1]),
+          },
+        },
+      }}
     >
-      <Flex align="center" gap="sm">
-        <Indicator color="green" disabled={!isOnline(conv)} size={10} offset={2} position="bottom-end">
-          <Avatar src={conv.recipient.avatar_url} radius="xl" />
+      <Flex align="center" gap="md">
+        <Indicator color="green" disabled={!online} size={11} offset={2} position="bottom-end" withBorder>
+          <Avatar src={conv.recipient.avatar_url} radius="xl" size="lg" />
         </Indicator>
         
         <Box style={{ flex: 1 }}>
-          <Text fw={active ? 700 : 500} size="sm" truncate>{conv.recipient.full_name || conv.recipient.username}</Text>
-          <Text fz="xs" c="dimmed" truncate>
-             {isOnline(conv) ? "En ligne" : "Hors ligne"}
+          <Text fw={active ? 800 : 600} fz="sm" truncate>
+            {conv.recipient.full_name || conv.recipient.username}
+          </Text>
+          <Text fz="xs" c={active ? (isDark ? "blue.1" : "blue.8") : "dimmed"} fw={active ? 600 : 400}>
+            {online ? "Actif maintenant" : "Hors ligne"}
           </Text>
         </Box>
 
@@ -296,10 +270,8 @@ function ConversationItem({ conv, active, onClick }: { conv: Conversation, activ
   );
 }
 
-
-function isOnline(conv: Conversation) {
-    const lastActive = conv.recipient.last_active;
-    if (!lastActive) return false;
-    const diff = Date.now() - new Date(lastActive).getTime();
-    return diff < 2 * 60 * 1000; // 2 minutes
+function isOnline(lastActive: string | null) {
+  if (!lastActive) return false;
+  const diff = Date.now() - new Date(lastActive).getTime();
+  return diff < 2 * 60 * 1000;
 }

@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -14,8 +16,10 @@ import {
   Box,
   ActionIcon,
   Badge,
+  ScrollArea,
+  rem
 } from "@mantine/core";
-import { Search, UserPlus, ChevronLeft } from "lucide-react";
+import { Search, UserPlus, ChevronLeft, Settings2 } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -39,6 +43,7 @@ interface Conversation {
   unread_count: number;
 }
 
+
 export default function FriendMessagePage() {
   const params = useParams();
   const router = useRouter();
@@ -54,9 +59,12 @@ export default function FriendMessagePage() {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  const borderColor = colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[3];
+  // Couleurs dynamiques pour un look "Clean"
+  const isDark = colorScheme === 'dark';
+  const sidebarBg = isDark ? theme.colors.dark[8] : theme.colors.gray[0];
+  const chatBg = isDark ? theme.colors.dark[7] : theme.white;
+  const borderCol = isDark ? theme.colors.dark[4] : theme.colors.gray[2];
 
-  // --- Logique de chargement des données ---
   const loadData = useCallback(async () => {
     setLoading(true);
     const { data: auth } = await supabase.auth.getUser();
@@ -166,10 +174,6 @@ export default function FriendMessagePage() {
     }
   };
 
-  const handleBack = () => {
-    setSelectedConv(null);
-    router.push("/chat", { scroll: false });
-  };
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((conv) =>
@@ -178,72 +182,98 @@ export default function FriendMessagePage() {
     );
   }, [conversations, search]);
 
+
   const showList = !isMobile || (isMobile && !selectedConv);
   const showChat = !isMobile || (isMobile && selectedConv);
 
   return (
-    <Flex w="100%" h="calc(100vh - 70px)" bg="var(--mantine-color-body)" mt="md">
+    <Flex w="100%" h="calc(100vh - 80px)" bg={sidebarBg} gap={0}>
       {/* BARRE LATÉRALE */}
       {showList && (
         <Box
-          w={isMobile ? "100%" : "350px"}
-          style={{ borderRight: `1px solid ${borderColor}`, display: "flex", flexDirection: "column" }}
+          w={isMobile ? "100%" : 380}
+          style={{ 
+            borderRight: `1px solid ${borderCol}`, 
+            display: "flex", 
+            flexDirection: "column",
+            zIndex: 10
+          }}
         >
-          <Box p="md" style={{ borderBottom: `1px solid ${borderColor}` }}>
-            <Title order={4} mb="sm">Messages</Title>
+          {/* Header Sidebar */}
+          <Stack p="lg" gap="md">
+            <Flex justify="space-between" align="center">
+              <Title order={3} fz={rem(22)} fw={800} lts={-0.5}>Messages</Title>
+              <ActionIcon variant="light" radius="md" color="gray">
+                <Settings2 size={18} />
+              </ActionIcon>
+            </Flex>
+            
             <TextInput
-              placeholder="Rechercher un ami..."
-              leftSection={<Search size={16} />}
+              placeholder="Rechercher une discussion..."
+              leftSection={<Search size={16} strokeWidth={2.5} />}
               value={search}
               onChange={(e) => setSearch(e.currentTarget.value)}
-              radius="md"
+              radius="xl"
+              size="md"
+              styles={{
+                input: {
+                  backgroundColor: isDark ? theme.colors.dark[6] : theme.white,
+                  border: `1px solid ${borderCol}`,
+                }
+              }}
             />
-          </Box>
+          </Stack>
 
-          <Box style={{ flex: 1, overflowY: "auto" }} p="xs">
-            {loading ? (
-              <Flex justify="center" mt="xl"><Loader size="sm" /></Flex>
-            ) : filteredConversations.length > 0 ? (
-              <Stack gap={4}>
-                {filteredConversations.map((conv) => (
-                  <ConversationItem
-                    key={conv.id}
-                    conv={conv}
-                    active={selectedConv?.recipient.id === conv.recipient.id}
-                    onClick={() => handleSelectConversation(conv)}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Stack align="center" mt="xl" c="dimmed">
-                <UserPlus size={40} />
-                <Text fz="sm">Aucune discussion</Text>
-              </Stack>
-            )}
-          </Box>
+          {/* Liste des conversations avec ScrollArea élégante */}
+          <ScrollArea style={{ flex: 1 }} scrollbarSize={6} scrollHideDelay={500}>
+            <Box px="md" pb="md">
+              {loading ? (
+                <Flex justify="center" mt="xl"><Loader variant="dots" /></Flex>
+              ) : filteredConversations.length > 0 ? (
+                <Stack gap={4}>
+                  {filteredConversations.map((conv) => (
+                    <ConversationItem
+                      key={conv.id}
+                      conv={conv}
+                      active={selectedConv?.recipient.id === conv.recipient.id}
+                      onClick={() => handleSelectConversation(conv)}
+                      isDark={isDark}
+                    />
+                  ))}
+                </Stack>
+              ) : (
+                <Stack align="center" mt={50} c="dimmed" gap="xs">
+                  <UserPlus size={32} opacity={0.5} />
+                  <Text fz="sm" fw={500}>Aucune discussion trouvée</Text>
+                </Stack>
+              )}
+            </Box>
+          </ScrollArea>
         </Box>
       )}
 
       {/* ZONE DE CHAT */}
       {showChat && (
-        <Flex flex={1} direction="column" bg={colorScheme === 'dark' ? theme.colors.dark[6] : theme.white}>
+        <Flex 
+          flex={1} 
+          direction="column" 
+          bg={chatBg}
+          style={{ position: 'relative' }}
+        >
           {selectedConv ? (
             <>
-              {isMobile && (
-                <Flex p="sm" align="center" style={{ borderBottom: `1px solid ${borderColor}` }}>
-                  <ActionIcon variant="subtle" onClick={handleBack} mr="sm">
-                    <ChevronLeft size={24} />
-                  </ActionIcon>
-                  <Avatar src={selectedConv.recipient.avatar_url} size="sm" mr="xs" />
-                  <Text fw={600} truncate>{selectedConv.recipient.full_name || selectedConv.recipient.username}</Text>
-                </Flex>
-              )}
-              <Chat conversation={selectedConv} onBack={handleBack} />
+                           
+              <Chat conversation={selectedConv} onBack={() => setSelectedConv(null)} />
             </>
           ) : (
-            <Flex flex={1} align="center" justify="center" direction="column" c="dimmed">
-              <Title order={3}>Vos messages</Title>
-              <Text>Sélectionnez une discussion pour commencer</Text>
+            <Flex flex={1} align="center" justify="center" direction="column">
+              <Box style={{ textAlign: 'center', opacity: 0.6 }}>
+                <Avatar size={80} radius="xl" mx="auto" mb="md" variant="light" color="blue">
+                  <Search size={40} />
+                </Avatar>
+                <Title order={3} fw={700}>Sélectionnez un message</Title>
+                <Text fz="sm" c="dimmed">Choisissez une personne dans la liste pour commencer à discuter.</Text>
+              </Box>
             </Flex>
           )}
         </Flex>
@@ -252,37 +282,63 @@ export default function FriendMessagePage() {
   );
 }
 
-// --- Sous-composants ---
-function ConversationItem({ conv, active, onClick }: { conv: Conversation; active: boolean; onClick: () => void }) {
-  const isUserOnline = isOnline(conv.recipient.last_active);
+// --- Composant Item de Conversation Modernisé ---
+function ConversationItem({ conv, active, onClick, isDark }: any) {
+  const online = isOnline(conv.recipient.last_active);
+  const theme = useMantineTheme();
 
   return (
     <Card
-      p="sm"
-      radius="md"
+      p="md"
+      radius="lg"
       onClick={onClick}
+      className="conversation-card"
       style={{
         cursor: "pointer",
-        backgroundColor: active ? 'var(--mantine-color-blue-light)' : 'transparent',
-        transition: "background 0.2s ease"
+        backgroundColor: active 
+          ? (isDark ? theme.colors.blue[9] : theme.colors.blue[0]) 
+          : 'transparent',
+        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        border: `1px solid ${active ? theme.colors.blue[4] : 'transparent'}`,
+      }}
+      // On utilise styles pour gérer les sélecteurs complexes comme le hover
+      styles={{
+        root: {
+          '&:hover': {
+            backgroundColor: active 
+              ? undefined 
+              : (isDark ? theme.colors.dark[6] : theme.white),
+            transform: 'translateY(-2px)',
+            boxShadow: theme.shadows.sm,
+          },
+        },
       }}
     >
-      <Flex align="center" gap="sm">
-        <Indicator color="green" disabled={!isUserOnline} size={10} offset={2} position="bottom-end" withBorder>
-          <Avatar src={conv.recipient.avatar_url} radius="xl" />
+      <Flex align="center" gap="md">
+        <Indicator color="green" disabled={!online} size={8} offset={2} position="bottom-end" withBorder>
+          <Avatar src={conv.recipient.avatar_url} radius="xl" size="lg" />
         </Indicator>
         
         <Box style={{ flex: 1 }}>
-          <Text fw={active ? 700 : 500} fz="sm" truncate>
-            {conv.recipient.full_name || conv.recipient.username}
-          </Text>
-          <Text fz="xs" c="dimmed">
-             {isUserOnline ? "En ligne" : "Hors ligne"}
+          <Flex justify="space-between" align="baseline">
+            <Text fw={active ? 800 : 600} fz="md" truncate>
+              {conv.recipient.full_name || conv.recipient.username}
+            </Text>
+          </Flex>
+          
+          <Text fz="xs" c={active ? (isDark ? "indigo.1" : "indigo.7") : "dimmed"} fw={active ? 600 : 400} truncate>
+             {online ? "En ligne" : "Hors ligne"}
           </Text>
         </Box>
 
         {conv.unread_count > 0 && (
-          <Badge color="red" variant="filled" size="sm" circle>
+          <Badge 
+            color="red" 
+            variant="filled" 
+            size="sm" 
+            circle 
+            style={{ boxShadow: '0 2px 5px rgba(255,0,0,0.3)' }}
+          >
             {conv.unread_count}
           </Badge>
         )}
